@@ -63,3 +63,21 @@ yarn build
 ```sh
 yarn typecheck
 ```
+
+## Локальная база Supabase
+
+Для локальной базы нужны Docker и Supabase CLI, установленный как зависимость проекта.
+
+```sh
+corepack yarn supabase start
+corepack yarn db:reset
+corepack yarn db:test
+```
+
+`db:reset` пересоздаёт только локальную базу и применяет миграции из `supabase/migrations/`. `db:test` запускает SQL-тесты pgTAP из `supabase/tests/`. Остановить локальные службы можно командой `corepack yarn db:stop`.
+
+Открытая регистрация Supabase Auth выключена. Для ручного создания пользователей используй локальную панель Supabase Studio или Dashboard: создай пользователей в разделе Authentication, затем административно добавь их профили в `public.profiles`, указав UUID соответствующей записи `auth.users`, роль `manager` или `executor` и отображаемое имя. Клиентские запросы не могут создавать или изменять профили.
+
+Чтобы впоследствии применить миграции к облачному проекту, отдельно выполни `corepack yarn supabase login`, свяжи нужный проект командой `corepack yarn supabase link --project-ref <project-ref>`, проверь цель и затем запусти `corepack yarn supabase db push`. Эти команды не выполнялись; миграции в облако не применялись.
+
+Не добавляй реальные пароли, ключи, UUID пользователей или `.env.local` в Git. Секретные ключи Supabase нельзя помещать во frontend.
