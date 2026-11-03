@@ -1,24 +1,15 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState, type SubmitEvent } from "react";
 import type { Session } from "@supabase/supabase-js";
 import styles from "./App.module.css";
 import { supabase, supabaseConfigured } from "../lib/supabase";
-
-type Profile = {
-  id: string;
-  display_name: string;
-  role: "manager" | "executor";
-};
+import { ObjectsPage } from "../features/objects/ObjectsPage";
+import type { Profile } from "../features/objects/types";
 
 type AuthState =
   | { status: "loading" }
   | { status: "signed-out" }
   | { status: "profile-error"; message: string }
   | { status: "signed-in"; profile: Profile };
-
-const roleNames: Record<Profile["role"], string> = {
-  manager: "Постановщик",
-  executor: "Исполнитель",
-};
 
 async function loadProfile(userId: string): Promise<Profile> {
   if (!supabase) throw new Error("Supabase не настроен.");
@@ -99,7 +90,7 @@ export function App() {
     };
   }, []);
 
-  const handleSignIn = async (event: FormEvent<HTMLFormElement>) => {
+  const handleSignIn = async (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!supabase) return;
     setSubmitting(true);
@@ -124,7 +115,9 @@ export function App() {
 
   return (
     <main className={styles.page}>
-      <section className={styles.card} aria-labelledby="app-title">
+      {authState.status === "signed-in" ? (
+        <ObjectsPage profile={authState.profile} onSignOut={handleSignOut} />
+      ) : <section className={styles.card} aria-labelledby="app-title">
         <span className={styles.eyebrow}>Мини-CRM · строительство</span>
         <h1 id="app-title">Объекты и задачи</h1>
         {!supabaseConfigured ? (
@@ -137,16 +130,6 @@ export function App() {
           <div className={styles.notice} role="alert">
             <p>{authState.message}</p>
             <p>Доступ к приложению не предоставлен.</p>
-            <button className={styles.secondaryButton} type="button" onClick={handleSignOut}>Выйти</button>
-          </div>
-        ) : authState.status === "signed-in" ? (
-          <div className={styles.profile}>
-            <p className={styles.description}>Приложение находится в разработке.</p>
-            <dl className={styles.details}>
-              <div><dt>Пользователь</dt><dd>{authState.profile.display_name}</dd></div>
-              <div><dt>Роль</dt><dd>{roleNames[authState.profile.role]}</dd></div>
-              <div><dt>ID</dt><dd>{authState.profile.id}</dd></div>
-            </dl>
             <button className={styles.secondaryButton} type="button" onClick={handleSignOut}>Выйти</button>
           </div>
         ) : (
@@ -166,7 +149,7 @@ export function App() {
             </button>
           </form>
         )}
-      </section>
+      </section>}
     </main>
   );
 }
