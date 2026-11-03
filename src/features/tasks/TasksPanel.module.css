@@ -3,6 +3,8 @@
 .heading h2 { margin: 0; font-size: 1.15rem; }
 .task { align-items: flex-start; padding: 16px; border: 1px solid #e0e7df; border-radius: 10px; }
 .taskInfo { display: grid; gap: 6px; }
+.taskLink { justify-self: start; padding: 0; border: 0; background: transparent; color: #315f3e; font: inherit; font-weight: 700; text-align: left; cursor: pointer; }
+.taskLink:hover, .taskLink:focus-visible { text-decoration: underline; }
 .status { width: fit-content; padding: 3px 8px; border-radius: 999px; background: #edf3ed; color: #315f3e; font-size: .8rem; font-weight: 700; }
 .muted { margin: 0; color: #68736b; font-size: .9rem; }
 .list { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }

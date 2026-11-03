@@ -1,18 +1,11 @@
 import { useEffect, useState, type SubmitEvent } from "react";
 import styles from "./TasksPanel.module.css";
+import { TaskDetails, statusNames } from "./TaskDetails";
 import { createTask, deleteTask, listExecutors, listTasks, updateTask, type CrmTask, type ExecutorProfile, type TaskStatus } from "./tasksApi";
 
 type Props = {
   objectId: string;
   isManager: boolean;
-};
-
-const statusNames: Record<TaskStatus, string> = {
-  new: "Новая",
-  in_progress: "В работе",
-  in_review: "На проверке",
-  accepted: "Принята",
-  rework: "На доработке",
 };
 
 function errorMessage(error: unknown, fallback: string) {
@@ -32,6 +25,7 @@ export function TasksPanel({ objectId, isManager }: Props) {
   const [description, setDescription] = useState("");
   const [assigneeId, setAssigneeId] = useState("");
   const [saving, setSaving] = useState(false);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
   const refreshTasks = async () => {
     setLoading(true);
@@ -122,6 +116,10 @@ export function TasksPanel({ objectId, isManager }: Props) {
     }
   };
 
+  const handleStatusChange = (taskId: string, status: TaskStatus) => {
+    setTasks((current) => current.map((task) => task.id === taskId ? { ...task, status } : task));
+  };
+
   return (
     <section className={styles.section} aria-labelledby="tasks-title">
       <div className={styles.heading}>
@@ -129,6 +127,12 @@ export function TasksPanel({ objectId, isManager }: Props) {
         {isManager && !formOpen && <button className={styles.primaryButton} type="button" onClick={startCreate}>Добавить задачу</button>}
       </div>
 
+      {selectedTaskId ? <TaskDetails
+        taskId={selectedTaskId}
+        isManager={isManager}
+        onBack={() => { setSelectedTaskId(null); void refreshTasks(); }}
+        onStatusChange={handleStatusChange}
+      /> : <>
       {formError && <p className={styles.error} role="alert">{formError}</p>}
       {formOpen && <form className={styles.form} onSubmit={handleSave}>
         <h3>{editingTask ? "Редактировать задачу" : "Новая задача"}</h3>
@@ -157,7 +161,7 @@ export function TasksPanel({ objectId, isManager }: Props) {
           : tasks.length === 0 ? <p className={styles.empty}>Для этого объекта пока нет задач.</p>
             : <ul className={styles.list}>{tasks.map((task) => <li className={styles.task} key={task.id}>
               <div className={styles.taskInfo}>
-                <strong>{task.title}</strong>
+                <button className={styles.taskLink} type="button" onClick={() => setSelectedTaskId(task.id)}>{task.title}</button>
                 <span className={styles.status}>{statusNames[task.status]}</span>
                 <span className={styles.muted}>Исполнитель: {task.assignee?.display_name ?? "Не указан"}</span>
               </div>
@@ -166,6 +170,7 @@ export function TasksPanel({ objectId, isManager }: Props) {
                 <button className={styles.dangerButton} type="button" disabled={saving} onClick={() => void handleDelete(task)}>Удалить</button>
               </div>}
             </li>)}</ul>}
+      </>}
     </section>
   );
 }

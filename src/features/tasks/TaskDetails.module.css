@@ -1,0 +1,32 @@
+.container { display: grid; gap: 20px; }
+.backButton, .primaryButton, .secondaryButton, .dangerButton { min-height: 40px; padding: 9px 14px; border: 0; border-radius: 8px; font: inherit; font-weight: 700; cursor: pointer; }
+.backButton, .secondaryButton { justify-self: start; background: #e9eee9; color: #344239; }
+.primaryButton { background: #315f3e; color: #fff; }
+.dangerButton { background: #f8e9e7; color: #9d332b; }
+.primaryButton:disabled, .dangerButton:disabled { cursor: wait; opacity: .65; }
+.header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding-bottom: 18px; border-bottom: 1px solid #edf0ec; }
+.header h2 { margin: 6px 0 0; font-size: clamp(1.5rem, 4vw, 2rem); overflow-wrap: anywhere; }
+.eyebrow { margin: 0; color: #55745e; font-size: .75rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.status { flex: 0 0 auto; padding: 5px 10px; border-radius: 999px; background: #edf3ed; color: #315f3e; font-size: .85rem; font-weight: 700; }
+.details { display: grid; gap: 16px; margin: 0; }
+.details div { display: grid; gap: 4px; }
+.details dt { color: #68736b; font-size: .85rem; }
+.details dd { margin: 0; overflow-wrap: anywhere; white-space: pre-wrap; }
+.actionsSection, .history { display: grid; gap: 14px; padding-top: 18px; border-top: 1px solid #edf0ec; }
+.actionsSection { border-top: 0; }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.field { display: grid; gap: 7px; color: #344239; font-size: .9rem; font-weight: 600; }
+.field textarea { width: 100%; min-height: 76px; padding: 10px 12px; border: 1px solid #cfd9cf; border-radius: 8px; color: inherit; font: inherit; resize: vertical; }
+.field textarea:focus { border-color: #43875b; outline: 3px solid rgb(67 135 91 / 18%); }
+.history h3 { margin: 0; font-size: 1.1rem; }
+.events { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }
+.events li { display: grid; gap: 5px; padding: 14px; border-left: 3px solid #91ad97; border-radius: 0 8px 8px 0; background: #f6f8f5; }
+.events time, .muted { color: #68736b; font-size: .88rem; }
+.events p { margin: 2px 0 0; white-space: pre-wrap; }
+.error { margin: 0; color: #9d332b; line-height: 1.5; }
+.errorBox { display: grid; justify-items: start; gap: 10px; color: #9d332b; }
+.errorBox p { margin: 0; line-height: 1.5; }
+
+@media (max-width: 560px) {
+  .header { flex-direction: column; }
+}
