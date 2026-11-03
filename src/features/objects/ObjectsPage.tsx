@@ -6,11 +6,12 @@ import { createObject, deleteObject, listObjects, updateObject, type CrmObject }
 type Props = {
   profile: Profile;
   onSignOut: () => void;
+  signOutError: string;
 };
 
 type View = "list" | { object: CrmObject };
 
-export function ObjectsPage({ profile, onSignOut }: Props) {
+export function ObjectsPage({ profile, onSignOut, signOutError }: Props) {
   const isManager = profile.role === "manager";
   const [objects, setObjects] = useState<CrmObject[]>([]);
   const [view, setView] = useState<View>("list");
@@ -75,7 +76,8 @@ export function ObjectsPage({ profile, onSignOut }: Props) {
         ? await updateObject(view.object.id, cleanName, cleanAddress)
         : await createObject(cleanName, cleanAddress);
       setLoadError("");
-      setObjects((current) => [object, ...current.filter((item) => item.id !== object.id)]);
+      setObjects((current) => [...current.filter((item) => item.id !== object.id), object]
+        .sort((left, right) => left.name.localeCompare(right.name)));
       setView(wasEditing ? { object } : "list");
       setName(object.name);
       setAddress(object.address);
@@ -112,6 +114,7 @@ export function ObjectsPage({ profile, onSignOut }: Props) {
         </div>
         <button className={styles.secondaryButton} type="button" onClick={onSignOut}>Выйти</button>
       </header>
+      {signOutError && <p className={styles.error} role="alert">{signOutError}</p>}
 
       {view !== "list" && <button className={styles.backButton} type="button" onClick={() => { setView("list"); setEditing(false); setFormError(""); }}>← Все объекты</button>}
 

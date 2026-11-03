@@ -37,6 +37,7 @@ export function App() {
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState("");
+  const [signOutError, setSignOutError] = useState("");
 
   useEffect(() => {
     if (!supabase) {
@@ -45,10 +46,11 @@ export function App() {
     }
 
     let active = true;
-    let currentUserId: string | null = null;
+    let currentUserId: string | null | undefined;
 
     const applySession = async (session: Session | null) => {
       const userId = session?.user.id ?? null;
+      if (userId === currentUserId) return;
       currentUserId = userId;
       if (!userId) {
         if (active) setAuthState({ status: "signed-out" });
@@ -71,10 +73,10 @@ export function App() {
 
     void supabase.auth.getSession().then(({ data, error }) => {
       if (error) {
-        if (active && currentUserId === null) setAuthState({ status: "signed-out" });
+        if (active && currentUserId === undefined) setAuthState({ status: "signed-out" });
         return;
       }
-      if (active && currentUserId === null) void applySession(data.session);
+      if (active && currentUserId === undefined) void applySession(data.session);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -108,15 +110,19 @@ export function App() {
 
   const handleSignOut = async () => {
     if (!supabase) return;
-    setFormError("");
-    const { error } = await supabase.auth.signOut();
-    if (error) setFormError("Не удалось завершить сеанс. Попробуйте ещё раз.");
+    setSignOutError("");
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) setSignOutError("Не удалось завершить сеанс. Попробуйте ещё раз.");
+    } catch {
+      setSignOutError("Не удалось связаться с Supabase. Сеанс не завершён.");
+    }
   };
 
   return (
     <main className={styles.page}>
       {authState.status === "signed-in" ? (
-        <ObjectsPage profile={authState.profile} onSignOut={handleSignOut} />
+        <ObjectsPage profile={authState.profile} onSignOut={handleSignOut} signOutError={signOutError} />
       ) : <section className={styles.card} aria-labelledby="app-title">
         <span className={styles.eyebrow}>Мини-CRM · строительство</span>
         <h1 id="app-title">Объекты и задачи</h1>
@@ -130,6 +136,7 @@ export function App() {
           <div className={styles.notice} role="alert">
             <p>{authState.message}</p>
             <p>Доступ к приложению не предоставлен.</p>
+            {signOutError && <p>{signOutError}</p>}
             <button className={styles.secondaryButton} type="button" onClick={handleSignOut}>Выйти</button>
           </div>
         ) : (
