@@ -1,4 +1,4 @@
-import { useEffect, useState, type SubmitEvent } from "react";
+import { useCallback, useEffect, useState, type SubmitEvent } from "react";
 import styles from "./TasksPanel.module.css";
 import { TaskDetails } from "./TaskDetails";
 import { TaskStatusBadge } from "./TaskStatusBadge";
@@ -9,6 +9,7 @@ type Props = {
   isManager: boolean;
   onViewChange: (view: TaskPanelView) => void;
   onDataChange: () => void;
+  onCreateActionChange: (action: (() => void) | null) => void;
 };
 
 export type TaskPanelView =
@@ -26,7 +27,7 @@ function errorMessage(error: unknown, fallback: string) {
   return error instanceof Error && error.message ? `${fallback} ${error.message}` : fallback;
 }
 
-export function TasksPanel({ objectId, isManager, onViewChange, onDataChange }: Props) {
+export function TasksPanel({ objectId, isManager, onViewChange, onDataChange, onCreateActionChange }: Props) {
   const [tasks, setTasks] = useState<CrmTask[]>([]);
   const [executors, setExecutors] = useState<ExecutorProfile[]>([]);
   const [executorsLoading, setExecutorsLoading] = useState(isManager);
@@ -34,6 +35,8 @@ export function TasksPanel({ objectId, isManager, onViewChange, onDataChange }: 
   const [loadError, setLoadError] = useState("");
   const [executorError, setExecutorError] = useState("");
   const [formError, setFormError] = useState("");
+  const [titleError, setTitleError] = useState("");
+  const [assigneeError, setAssigneeError] = useState("");
   const [view, setView] = useState<TaskView>({ kind: "list" });
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -79,17 +82,29 @@ export function TasksPanel({ objectId, isManager, onViewChange, onDataChange }: 
       : next.kind === "card" ? { kind: "card", onBack: returnToObject } : { kind: "list" });
   };
 
-  const startCreate = () => {
+  const startCreate = useCallback(() => {
     setTitle("");
     setDescription("");
     setAssigneeId(executors[0]?.id ?? "");
-    navigate({ kind: "form", mode: "create" });
-  };
+    setView({ kind: "form", mode: "create" });
+    setFormError("");
+    setTitleError("");
+    setAssigneeError("");
+    onViewChange({ kind: "form", title: "Создание задачи" });
+  }, [executors, onViewChange]);
+
+  useEffect(() => {
+    onCreateActionChange(isManager ? startCreate : null);
+    return () => onCreateActionChange(null);
+  }, [isManager, onCreateActionChange, startCreate]);
 
   const startEdit = (task: Pick<CrmTask, "id" | "title" | "description" | "assignee_id">) => {
     setTitle(task.title);
     setDescription(task.description);
     setAssigneeId(task.assignee_id);
+    setFormError("");
+    setTitleError("");
+    setAssigneeError("");
     navigate({ kind: "form", mode: "edit", task });
   };
 
@@ -97,10 +112,11 @@ export function TasksPanel({ objectId, isManager, onViewChange, onDataChange }: 
     event.preventDefault();
     if (saving || view.kind !== "form") return;
     const cleanTitle = title.trim();
-    if (!cleanTitle || !assigneeId) {
-      setFormError("Укажите название задачи и выберите исполнителя.");
-      return;
-    }
+    const nextTitleError = cleanTitle ? "" : "Укажите название задачи.";
+    const nextAssigneeError = assigneeId ? "" : "Выберите исполнителя.";
+    setTitleError(nextTitleError);
+    setAssigneeError(nextAssigneeError);
+    if (nextTitleError || nextAssigneeError) return;
 
     setSaving(true);
     setFormError("");
@@ -143,7 +159,6 @@ export function TasksPanel({ objectId, isManager, onViewChange, onDataChange }: 
       {view.kind === "list" ? <>
         <div className={styles.heading}>
           <h2>Задачи объекта</h2>
-          {isManager && <button className={styles.primaryButton} type="button" onClick={startCreate}>Создать задачу</button>}
         </div>
         {formError && <p className={styles.error} role="alert">{formError}</p>}
         {loading ? <p className={styles.muted} role="status">Загружаем задачи…</p>
@@ -165,23 +180,25 @@ export function TasksPanel({ objectId, isManager, onViewChange, onDataChange }: 
         onDelete={handleDelete}
         onDataChange={onDataChange}
       /> : <>
-        <form className={styles.form} onSubmit={handleSave}>
-          {formError && <p className={styles.error} role="alert">{formError}</p>}
+      <form className={styles.form} noValidate onSubmit={handleSave}>
           <label className={styles.field}>Название
-            <input value={title} onChange={(event) => setTitle(event.target.value)} required disabled={saving} />
+            <input value={title} onChange={(event) => { setTitle(event.target.value); setTitleError(""); }} required aria-invalid={Boolean(titleError)} aria-describedby={titleError ? "task-title-error" : undefined} disabled={saving} />
+            {titleError && <span id="task-title-error" className={styles.fieldError} role="alert">{titleError}</span>}
           </label>
           <label className={styles.field}>Описание
             <textarea rows={3} value={description} onChange={(event) => setDescription(event.target.value)} disabled={saving} />
           </label>
           <label className={styles.field}>Исполнитель
-            <select value={assigneeId} onChange={(event) => setAssigneeId(event.target.value)} required disabled={saving || executorsLoading || executors.length === 0}>
+            <select value={assigneeId} onChange={(event) => { setAssigneeId(event.target.value); setAssigneeError(""); }} required aria-invalid={Boolean(assigneeError || executorError)} aria-describedby={[assigneeError && "task-assignee-error", executorError && "task-executor-error"].filter(Boolean).join(" ") || undefined} disabled={saving || executorsLoading || executors.length === 0}>
               <option value="" disabled>Выберите исполнителя</option>
               {executors.map((executor) => <option key={executor.id} value={executor.id}>{executor.display_name}</option>)}
             </select>
+            {assigneeError && <span id="task-assignee-error" className={styles.fieldError} role="alert">{assigneeError}</span>}
+            {executorError && <span id="task-executor-error" className={styles.fieldError} role="alert">{executorError}</span>}
           </label>
-          {executorError && <p className={styles.error} role="alert">{executorError}</p>}
           {executorsLoading && <p className={styles.muted} role="status">Загружаем исполнителей…</p>}
           {!executorsLoading && !executorError && executors.length === 0 && <p className={styles.muted}>Нет доступных исполнителей.</p>}
+          {formError && <p className={styles.error} role="alert">{formError}</p>}
           <div className={styles.actions}>
             <button className={styles.primaryButton} type="submit" disabled={saving || executorsLoading || executors.length === 0}>{saving ? "Сохраняем…" : "Сохранить"}</button>
             <button className={styles.secondaryButton} type="button" disabled={saving} onClick={() => navigate(view.mode === "create" ? { kind: "list" } : { kind: "card", taskId: view.task.id })}>Отмена</button>

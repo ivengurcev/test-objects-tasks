@@ -1,0 +1,55 @@
+.container {
+  display: grid;
+  gap: 18px;
+  width: min(100%, 900px);
+  padding: 40px;
+  border: 1px solid #e0e7df;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 18px 60px rgb(32 42 35 / 7%);
+}
+
+.utilityBar,
+.navigation,
+.groupHeader,
+.taskLink {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.utilityBar {
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #edf0ec;
+  color: #55745e;
+  font-size: .82rem;
+  font-weight: 700;
+}
+
+.navigation > div { display: flex; align-items: center; }
+.sectionHeader h1 { margin: 0; font-size: clamp(1.8rem, 5vw, 2.5rem); letter-spacing: -.04em; }
+.backButton, .secondaryButton { min-height: 42px; padding: 9px 14px; border: 0; border-radius: 8px; background: #e9eee9; color: #344239; font: inherit; font-weight: 700; cursor: pointer; }
+.backButton { justify-self: start; }
+.muted { margin: 0; color: #68736b; line-height: 1.5; }
+.error { margin: 0; color: #9d332b; line-height: 1.5; }
+.notice { display: grid; justify-items: start; gap: 12px; margin: 0; padding: 20px; border-radius: 10px; background: #f6f8f5; color: #68736b; }
+.notice p { margin: 0; }
+.groups { display: grid; gap: 16px; }
+.group { overflow: hidden; border: 1px solid #e0e7df; border-radius: 12px; }
+.groupHeader { align-items: flex-start; flex-direction: column; gap: 4px; padding: 16px; background: #f6f8f5; }
+.groupHeader h2 { margin: 0; font-size: 1.15rem; overflow-wrap: anywhere; }
+.groupHeader p { margin: 0; color: #68736b; }
+.taskList { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; }
+.taskList li + li { border-top: 1px solid #edf0ec; }
+.taskLink { width: 100%; min-height: 58px; padding: 12px 16px; border: 0; background: #fff; color: #202a23; font: inherit; text-align: left; cursor: pointer; }
+.taskLink:hover, .taskLink:focus-visible { background: #f8faf8; }
+.taskLink > span:first-child { overflow-wrap: anywhere; }
+
+@media (max-width: 560px) {
+  .container { padding: 28px 20px; }
+  .utilityBar { align-items: flex-start; flex-direction: column; gap: 4px; }
+  .navigation { align-items: flex-start; }
+  .taskLink { align-items: flex-start; flex-direction: column; }
+}

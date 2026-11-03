@@ -1,14 +1,15 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type SubmitEvent } from "react";
 import styles from "./TaskDetails.module.css";
 import { getTaskDetails, listTaskHistory, transitionTaskStatus, type TaskDetailsData, type TaskStatus, type TaskStatusEvent } from "./tasksApi";
 import { TaskStatusBadge } from "./TaskStatusBadge";
+import { reworkCommentError } from "./formValidation";
 
 type Props = {
   taskId: string;
   isManager: boolean;
-  onEdit: (task: TaskDetailsData) => void;
+  onEdit?: (task: TaskDetailsData) => void;
   onStatusChange: (taskId: string, status: TaskStatus) => void;
-  onDelete: (task: TaskDetailsData) => Promise<void>;
+  onDelete?: (task: TaskDetailsData) => Promise<void>;
   onDataChange: () => void;
 };
 
@@ -29,9 +30,13 @@ export function TaskDetails({ taskId, isManager, onEdit, onStatusChange, onDelet
   const [loading, setLoading] = useState(true);
   const [historyLoading, setHistoryLoading] = useState(true);
   const [error, setError] = useState("");
+  const [statusError, setStatusError] = useState("");
+  const [recordError, setRecordError] = useState("");
+  const [commentError, setCommentError] = useState("");
   const [historyError, setHistoryError] = useState("");
   const [comment, setComment] = useState("");
   const [saving, setSaving] = useState(false);
+  const commentRef = useRef<HTMLTextAreaElement>(null);
 
   const refreshHistory = async () => {
     setHistoryLoading(true);
@@ -83,16 +88,30 @@ export function TaskDetails({ taskId, isManager, onEdit, onStatusChange, onDelet
           : task.status === "rework" ? ["in_progress"] : []
     : [];
 
-  const handleTransition = async (newStatus: TaskStatus) => {
-    if (!task || saving) return;
+  const handleTransition = async (event: SubmitEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const submitter = event.nativeEvent.submitter as HTMLButtonElement | null;
+    const newStatus = submitter?.value as TaskStatus | undefined;
+    if (!task || !newStatus || saving) return;
+
+    setStatusError("");
     const cleanComment = comment.trim();
-    if (newStatus === "rework" && !cleanComment) {
-      setError("Укажите комментарий для возврата задачи на доработку.");
-      return;
+    if (newStatus === "rework") {
+      const validationError = reworkCommentError(comment);
+      commentRef.current?.setCustomValidity(validationError ?? "");
+      if (!event.currentTarget.reportValidity()) {
+        setCommentError(validationError ?? "Проверьте комментарий.");
+        commentRef.current?.focus();
+        return;
+      }
+      setCommentError("");
+    } else {
+      commentRef.current?.setCustomValidity("");
+      setCommentError("");
     }
 
     setSaving(true);
-    setError("");
+    setStatusError("");
     try {
       await transitionTaskStatus(task.id, newStatus, newStatus === "rework" ? cleanComment : null);
       setTask((current) => current ? { ...current, status: newStatus } : current);
@@ -101,20 +120,20 @@ export function TaskDetails({ taskId, isManager, onEdit, onStatusChange, onDelet
       onDataChange();
       await refreshHistory();
     } catch (reason) {
-      setError(errorMessage(reason, "Не удалось изменить статус задачи."));
+      setStatusError(errorMessage(reason, "Не удалось изменить статус задачи."));
     } finally {
       setSaving(false);
     }
   };
 
   const handleDelete = async () => {
-    if (!task || saving || !window.confirm(`Удалить задачу «${task.title}»?`)) return;
+    if (!task || !onDelete || saving || !window.confirm(`Удалить задачу «${task.title}»?`)) return;
     setSaving(true);
-    setError("");
+    setRecordError("");
     try {
       await onDelete(task);
     } catch (reason) {
-      setError(errorMessage(reason, "Не удалось удалить задачу."));
+      setRecordError(errorMessage(reason, "Не удалось удалить задачу."));
     } finally {
       setSaving(false);
     }
@@ -130,10 +149,10 @@ export function TaskDetails({ taskId, isManager, onEdit, onStatusChange, onDelet
               <p className={styles.subtitle}>Постановщик: {task.author?.display_name ?? "Не указан"}</p>
             </header>
             {isManager && <div className={styles.recordActions}>
-              <button className={styles.secondaryButton} type="button" onClick={() => onEdit(task)}>Редактировать</button>
-              <button className={styles.dangerButton} type="button" disabled={saving} onClick={() => void handleDelete()}>Удалить</button>
+              {onEdit && <button className={styles.secondaryButton} type="button" onClick={() => onEdit(task)}>Редактировать</button>}
+              {onDelete && <button className={styles.dangerButton} type="button" disabled={saving} onClick={() => void handleDelete()}>Удалить</button>}
             </div>}
-            {error && <p className={styles.error} role="alert">{error}</p>}
+            {recordError && <p className={styles.error} role="alert">{recordError}</p>}
             <dl className={styles.details}>
               <div><dt>Текущий статус</dt><dd><TaskStatusBadge status={task.status} /></dd></div>
               <div><dt>Описание</dt><dd>{task.description || "—"}</dd></div>
@@ -142,20 +161,23 @@ export function TaskDetails({ taskId, isManager, onEdit, onStatusChange, onDelet
               <div><dt>Создана</dt><dd>{new Date(task.created_at).toLocaleString()}</dd></div>
             </dl>
 
-            {actions.length > 0 && <section className={styles.actionsSection} aria-label="Действия со статусом">
+            {actions.length > 0 && <form className={styles.actionsSection} aria-label="Действия со статусом" noValidate onSubmit={handleTransition}>
               {isManager && task.status === "in_review" && actions.includes("rework") && <label className={styles.field}>Комментарий для доработки
-                <textarea rows={3} value={comment} onChange={(event) => setComment(event.target.value)} disabled={saving} />
+                <textarea id="rework-comment" ref={commentRef} rows={3} value={comment} required aria-invalid={Boolean(commentError)} aria-describedby={commentError ? "rework-comment-error" : undefined} onChange={(event) => { setComment(event.target.value); setCommentError(""); event.currentTarget.setCustomValidity(""); }} disabled={saving} />
+                {commentError && <span id="rework-comment-error" className={styles.fieldError} role="alert">{commentError}</span>}
               </label>}
+              {statusError && <p className={styles.error} role="alert">{statusError}</p>}
               <div className={styles.actions}>
                 {actions.map((status) => <button
                   className={status === "rework" ? styles.dangerButton : styles.primaryButton}
                   key={status}
-                  type="button"
+                  type="submit"
+                  value={status}
+                  formNoValidate={status !== "rework"}
                   disabled={saving}
-                  onClick={() => void handleTransition(status)}
                 >{saving ? "Сохраняем…" : status === "in_progress" && task.status === "rework" ? "Возобновить работу" : actionNames[status]}</button>)}
               </div>
-            </section>}
+            </form>}
 
             <section className={styles.history} aria-labelledby="task-history-title">
               <h3 id="task-history-title">История изменений</h3>

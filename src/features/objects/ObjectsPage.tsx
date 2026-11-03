@@ -1,4 +1,4 @@
-import { useEffect, useState, type SubmitEvent } from "react";
+import { useCallback, useEffect, useState, type SubmitEvent } from "react";
 import type { Profile } from "./types";
 import styles from "./ObjectsPage.module.css";
 import { createObject, deleteObject, listActiveTaskStatuses, listObjects, updateObject, type CrmObject } from "./objectsApi";
@@ -27,6 +27,7 @@ export function ObjectsPage({ profile, onSignOut, signOutError }: Props) {
   const [objects, setObjects] = useState<CrmObject[]>([]);
   const [view, setView] = useState<View>({ kind: "list" });
   const [taskView, setTaskView] = useState<TaskPanelView>({ kind: "list" });
+  const [createTaskAction, setCreateTaskAction] = useState<(() => void) | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [taskCounts, setTaskCounts] = useState<TaskCounts>({});
@@ -34,6 +35,8 @@ export function ObjectsPage({ profile, onSignOut, signOutError }: Props) {
   const [countsError, setCountsError] = useState("");
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
+  const [nameError, setNameError] = useState("");
+  const [addressError, setAddressError] = useState("");
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
 
@@ -72,6 +75,10 @@ export function ObjectsPage({ profile, onSignOut, signOutError }: Props) {
     }
   };
 
+  const registerCreateTaskAction = useCallback((action: (() => void) | null) => {
+    setCreateTaskAction(() => action);
+  }, []);
+
   useEffect(() => {
     void refreshObjects();
     void refreshTaskCounts();
@@ -87,6 +94,8 @@ export function ObjectsPage({ profile, onSignOut, signOutError }: Props) {
     setName("");
     setAddress("");
     setFormError("");
+    setNameError("");
+    setAddressError("");
     setView({ kind: "object-form", mode: "create" });
   };
 
@@ -95,11 +104,15 @@ export function ObjectsPage({ profile, onSignOut, signOutError }: Props) {
     setName(object.name);
     setAddress(object.address);
     setFormError("");
+    setNameError("");
+    setAddressError("");
     setView({ kind: "object-form", mode: "edit", object });
   };
 
   const cancelObjectForm = () => {
     setFormError("");
+    setNameError("");
+    setAddressError("");
     setTaskView({ kind: "list" });
     setView((current) => current.kind === "object-form" && current.mode === "edit"
       ? { kind: "object", object: current.object }
@@ -111,10 +124,11 @@ export function ObjectsPage({ profile, onSignOut, signOutError }: Props) {
     if (saving) return;
     const cleanName = name.trim();
     const cleanAddress = address.trim();
-    if (!cleanName || !cleanAddress) {
-      setFormError("Заполните название и адрес.");
-      return;
-    }
+    const nextNameError = cleanName ? "" : "Укажите название объекта.";
+    const nextAddressError = cleanAddress ? "" : "Укажите адрес объекта.";
+    setNameError(nextNameError);
+    setAddressError(nextAddressError);
+    if (nextNameError || nextAddressError) return;
 
     setSaving(true);
     setFormError("");
@@ -199,14 +213,16 @@ export function ObjectsPage({ profile, onSignOut, signOutError }: Props) {
                   </span>
                 </button>
               </li>)}</ul>}
-      </> : view.kind === "object-form" ? <form className={styles.form} onSubmit={handleSaveObject}>
-        {formError && <p className={styles.error} role="alert">{formError}</p>}
+      </> : view.kind === "object-form" ? <form className={styles.form} noValidate onSubmit={handleSaveObject}>
         <label className={styles.field}>Название
-          <input value={name} onChange={(event) => setName(event.target.value)} required disabled={saving} />
+          <input value={name} onChange={(event) => { setName(event.target.value); setNameError(""); }} required aria-invalid={Boolean(nameError)} aria-describedby={nameError ? "object-name-error" : undefined} disabled={saving} />
+          {nameError && <span id="object-name-error" className={styles.fieldError} role="alert">{nameError}</span>}
         </label>
         <label className={styles.field}>Адрес
-          <input value={address} onChange={(event) => setAddress(event.target.value)} required disabled={saving} />
+          <input value={address} onChange={(event) => { setAddress(event.target.value); setAddressError(""); }} required aria-invalid={Boolean(addressError)} aria-describedby={addressError ? "object-address-error" : undefined} disabled={saving} />
+          {addressError && <span id="object-address-error" className={styles.fieldError} role="alert">{addressError}</span>}
         </label>
+        {formError && <p className={styles.error} role="alert">{formError}</p>}
         <div className={styles.actions}>
           <button className={styles.primaryButton} type="submit" disabled={saving}>{saving ? "Сохраняем…" : "Сохранить"}</button>
           <button className={styles.secondaryButton} type="button" onClick={cancelObjectForm} disabled={saving}>Отмена</button>
@@ -215,6 +231,7 @@ export function ObjectsPage({ profile, onSignOut, signOutError }: Props) {
         {taskView.kind === "list" && <>
           <header className={styles.sectionHeader}><h1>Объект: {view.object.name}</h1></header>
           {isManager && <div className={styles.actions}>
+            {createTaskAction && <button className={styles.primaryButton} type="button" onClick={createTaskAction}>Создать задачу</button>}
             <button className={styles.primaryButton} type="button" onClick={() => startEdit(view.object)}>Редактировать</button>
             <button className={styles.dangerButton} type="button" disabled={saving} onClick={() => void handleDeleteObject(view.object)}>Удалить</button>
           </div>}
@@ -230,6 +247,7 @@ export function ObjectsPage({ profile, onSignOut, signOutError }: Props) {
             isManager={isManager}
             onViewChange={setTaskView}
             onDataChange={() => void refreshTaskCounts()}
+            onCreateActionChange={registerCreateTaskAction}
           />
         </div>}
       </>}

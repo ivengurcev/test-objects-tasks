@@ -10,6 +10,7 @@
 .form { display: grid; gap: 14px; padding: 18px; border: 1px solid #e0e7df; border-radius: 12px; }
 .form h3 { margin: 0; font-size: 1rem; }
 .field { display: grid; gap: 7px; color: #344239; font-size: .9rem; font-weight: 600; }
+.fieldError { color: #9d332b; font-size: .85rem; font-weight: 500; }
 .field input, .field textarea, .field select { width: 100%; min-height: 42px; padding: 9px 11px; border: 1px solid #cfd9cf; border-radius: 8px; color: inherit; font: inherit; }
 .field textarea { resize: vertical; }
 .field input:focus, .field textarea:focus, .field select:focus { border-color: #43875b; outline: 3px solid rgb(67 135 91 / 18%); }

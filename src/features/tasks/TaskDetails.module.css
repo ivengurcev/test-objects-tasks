@@ -16,17 +16,18 @@
 .actionsSection { border-top: 0; }
 .actions { display: flex; flex-wrap: wrap; gap: 10px; }
 .field { display: grid; gap: 7px; color: #344239; font-size: .9rem; font-weight: 600; }
+.fieldError { color: #9d332b; font-size: .85rem; font-weight: 500; }
 .field textarea { width: 100%; min-height: 76px; padding: 10px 12px; border: 1px solid #cfd9cf; border-radius: 8px; color: inherit; font: inherit; resize: vertical; }
 .field textarea:focus { border-color: #43875b; outline: 3px solid rgb(67 135 91 / 18%); }
 .history h3 { margin: 0; font-size: 1.1rem; }
 .events { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
 .events li { display: grid; gap: 0; padding: 4px 14px; border-left: 3px solid #91ad97; border-radius: 0 8px 8px 0; background: #f6f8f5; }
-.eventTop, .eventBottom { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.eventTop, .eventBottom { display: flex; align-items: flex-start; gap: 8px; min-width: 0; }
 .eventTop { justify-content: space-between; }
 .eventTop time, .muted { color: #68736b; font-size: .82rem; white-space: nowrap; }
-.eventBottom { flex-wrap: nowrap; overflow: hidden; font-size: .9rem; white-space: nowrap; }
-.eventBottom strong { flex: 0 0 auto; max-width: 40%; overflow: hidden; text-overflow: ellipsis; }
-.comment { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.eventBottom { flex-wrap: wrap; overflow: visible; font-size: .9rem; white-space: normal; }
+.eventBottom strong { flex: 0 1 auto; max-width: 100%; overflow-wrap: anywhere; }
+.comment { min-width: 0; overflow-wrap: anywhere; white-space: pre-wrap; }
 .comment::before { content: "— "; }
 .error { margin: 0; color: #9d332b; line-height: 1.5; }
 .errorBox { display: grid; justify-items: start; gap: 10px; color: #9d332b; }

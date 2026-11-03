@@ -3,6 +3,7 @@ import type { Session } from "@supabase/supabase-js";
 import styles from "./App.module.css";
 import { supabase, supabaseConfigured } from "../lib/supabase";
 import { ObjectsPage } from "../features/objects/ObjectsPage";
+import { MyTasksPage } from "../features/tasks/MyTasksPage";
 import type { Profile } from "../features/objects/types";
 
 type AuthState =
@@ -122,7 +123,9 @@ export function App() {
   return (
     <main className={styles.page}>
       {authState.status === "signed-in" ? (
-        <ObjectsPage profile={authState.profile} onSignOut={handleSignOut} signOutError={signOutError} />
+        authState.profile.role === "manager"
+          ? <ObjectsPage profile={authState.profile} onSignOut={handleSignOut} signOutError={signOutError} />
+          : <MyTasksPage profile={authState.profile} onSignOut={handleSignOut} signOutError={signOutError} />
       ) : <section className={styles.card} aria-labelledby="app-title">
         <span className={styles.eyebrow}>Мини-CRM · строительство</span>
         <h1 id="app-title">Объекты и задачи</h1>

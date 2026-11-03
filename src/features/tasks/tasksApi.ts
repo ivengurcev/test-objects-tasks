@@ -1,4 +1,5 @@
 import { supabase } from "../../lib/supabase";
+import type { MyTask } from "./myTasksModel";
 
 export type TaskStatus = "new" | "in_progress" | "in_review" | "accepted" | "rework";
 
@@ -50,6 +51,17 @@ export async function listTasks(objectId: string): Promise<CrmTask[]> {
     .order("title");
   if (error) throw error;
   return data as unknown as CrmTask[];
+}
+
+export async function listMyTasks(executorId: string): Promise<MyTask[]> {
+  const { data, error } = await client()
+    .from("tasks")
+    .select("id, title, status, object_id, object:objects!tasks_object_id_fkey(id, name, address)")
+    .eq("assignee_id", executorId)
+    .is("deleted_at", null)
+    .order("title");
+  if (error) throw error;
+  return data as unknown as MyTask[];
 }
 
 export async function listExecutors(): Promise<ExecutorProfile[]> {
