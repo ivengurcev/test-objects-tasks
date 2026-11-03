@@ -2,7 +2,7 @@
 
 Мини-CRM для строительной компании: постановщики ведут объекты и назначают задачи, исполнители выполняют назначенные задачи, а постановщики принимают работу или возвращают её на доработку.
 
-**Демонстрация:** приложение раздаётся через Nginx; внешний порт — `3003`.
+**Демонстрация:** [http://2.27.120.66:3003/](http://2.27.120.66:3003/) — контейнер опубликован напрямую на внешнем порту `3003`; Nginx внутри контейнера слушает порт `8080`.
 
 ## Возможности и роли
 
@@ -99,26 +99,26 @@ docker save --output test-objects-tasks.tar test-objects-tasks:latest
 scp test-objects-tasks.tar <user>@<server>:/tmp/
 ```
 
-На VPS загрузи образ и запусти контейнер за существующим Nginx:
+На VPS загрузи образ и запусти контейнер с прямой публикацией на внешнем порту `3003`:
 
 ```sh
 docker load --input /tmp/test-objects-tasks.tar
-docker run --detach \
+docker run -d \
   --name mini-crm \
   --restart unless-stopped \
-  --publish 127.0.0.1:8080:8080 \
+  -p 3003:8080 \
   test-objects-tasks:latest
 ```
 
-Контейнер доступен только через loopback на VPS. Внешний Nginx направляет демонстрационный порт `3003` на `http://127.0.0.1:8080` и выполняет HTTPS-терминацию. Не открывай порт контейнера напрямую наружу.
+Docker направляет внешний порт `3003` прямо на Nginx внутри контейнера, работающий на порту `8080`. Дополнительный Nginx-прокси и HTTPS-терминация не используются.
 
 Проверка главной страницы, статических файлов и SPA fallback:
 
 ```sh
-curl --fail --head http://127.0.0.1:8080/
-curl --fail --head http://127.0.0.1:8080/main.js
-curl --fail --head http://127.0.0.1:8080/main.css
-curl --fail --head http://127.0.0.1:8080/example/client/path
+curl --fail --head http://2.27.120.66:3003/
+curl --fail --head http://2.27.120.66:3003/main.js
+curl --fail --head http://2.27.120.66:3003/main.css
+curl --fail --head http://2.27.120.66:3003/example/client/path
 ```
 
 Для обновления образа загрузи его новой версией и пересоздай контейнер:
@@ -126,10 +126,10 @@ curl --fail --head http://127.0.0.1:8080/example/client/path
 ```sh
 docker stop mini-crm
 docker rm mini-crm
-docker run --detach \
+docker run -d \
   --name mini-crm \
   --restart unless-stopped \
-  --publish 127.0.0.1:8080:8080 \
+  -p 3003:8080 \
   test-objects-tasks:latest
 ```
 
