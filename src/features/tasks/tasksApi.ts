@@ -26,7 +26,6 @@ export type TaskDetailsData = CrmTask & {
 export type TaskStatusEvent = {
   id: string;
   actor_id: string;
-  from_status: TaskStatus | null;
   to_status: TaskStatus;
   comment: string | null;
   created_at: string;
@@ -77,7 +76,7 @@ export async function getTaskDetails(taskId: string): Promise<TaskDetailsData> {
 export async function listTaskHistory(taskId: string): Promise<TaskStatusEvent[]> {
   const { data, error } = await client()
     .from("task_status_history")
-    .select("id, actor_id, from_status, to_status, comment, created_at, actor:profiles!task_status_history_actor_id_fkey(display_name)")
+    .select("id, actor_id, to_status, comment, created_at, actor:profiles!task_status_history_actor_id_fkey(display_name)")
     .eq("task_id", taskId)
     .order("created_at", { ascending: true })
     .order("id", { ascending: true });

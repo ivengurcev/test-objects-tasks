@@ -1,6 +1,7 @@
 import { useEffect, useState, type SubmitEvent } from "react";
 import styles from "./TasksPanel.module.css";
-import { TaskDetails, statusNames } from "./TaskDetails";
+import { TaskDetails } from "./TaskDetails";
+import { TaskStatusBadge } from "./TaskStatusBadge";
 import { createTask, deleteTask, listExecutors, listTasks, updateTask, type CrmTask, type ExecutorProfile, type TaskStatus } from "./tasksApi";
 
 type Props = {
@@ -120,19 +121,25 @@ export function TasksPanel({ objectId, isManager }: Props) {
     setTasks((current) => current.map((task) => task.id === taskId ? { ...task, status } : task));
   };
 
-  return (
-    <section className={styles.section} aria-labelledby="tasks-title">
-      <div className={styles.heading}>
-        <h2 id="tasks-title">Задачи объекта</h2>
-        {isManager && !formOpen && <button className={styles.primaryButton} type="button" onClick={startCreate}>Добавить задачу</button>}
-      </div>
+  const openTask = (taskId: string) => {
+    setFormOpen(false);
+    setEditingTask(null);
+    setFormError("");
+    setSelectedTaskId(taskId);
+  };
 
+  return (
+    <section className={styles.section} aria-label="Задачи объекта">
       {selectedTaskId ? <TaskDetails
         taskId={selectedTaskId}
         isManager={isManager}
         onBack={() => { setSelectedTaskId(null); void refreshTasks(); }}
         onStatusChange={handleStatusChange}
       /> : <>
+      <div className={styles.heading}>
+        <h2 id="tasks-title">Задачи объекта</h2>
+        {isManager && !formOpen && <button className={styles.primaryButton} type="button" onClick={startCreate}>Добавить задачу</button>}
+      </div>
       {formError && <p className={styles.error} role="alert">{formError}</p>}
       {formOpen && <form className={styles.form} onSubmit={handleSave}>
         <h3>{editingTask ? "Редактировать задачу" : "Новая задача"}</h3>
@@ -161,8 +168,8 @@ export function TasksPanel({ objectId, isManager }: Props) {
           : tasks.length === 0 ? <p className={styles.empty}>Для этого объекта пока нет задач.</p>
             : <ul className={styles.list}>{tasks.map((task) => <li className={styles.task} key={task.id}>
               <div className={styles.taskInfo}>
-                <button className={styles.taskLink} type="button" onClick={() => setSelectedTaskId(task.id)}>{task.title}</button>
-                <span className={styles.status}>{statusNames[task.status]}</span>
+                <button className={styles.taskLink} type="button" onClick={() => openTask(task.id)}>{task.title}</button>
+                <TaskStatusBadge status={task.status} />
                 <span className={styles.muted}>Исполнитель: {task.assignee?.display_name ?? "Не указан"}</span>
               </div>
               {isManager && <div className={styles.actions}>

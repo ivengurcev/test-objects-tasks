@@ -6,6 +6,11 @@ export type CrmObject = {
   address: string;
 };
 
+export type ActiveTaskStatus = {
+  object_id: string;
+  status: string;
+};
+
 function client() {
   if (!supabase) throw new Error("Supabase не настроен.");
   return supabase;
@@ -17,6 +22,15 @@ export async function listObjects(): Promise<CrmObject[]> {
     .select("id, name, address")
     .is("deleted_at", null)
     .order("name");
+  if (error) throw error;
+  return data;
+}
+
+export async function listActiveTaskStatuses(): Promise<ActiveTaskStatus[]> {
+  const { data, error } = await client()
+    .from("tasks")
+    .select("object_id, status")
+    .is("deleted_at", null);
   if (error) throw error;
   return data;
 }

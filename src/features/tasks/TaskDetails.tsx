@@ -1,20 +1,13 @@
 import { useEffect, useState } from "react";
 import styles from "./TaskDetails.module.css";
 import { getTaskDetails, listTaskHistory, transitionTaskStatus, type TaskDetailsData, type TaskStatus, type TaskStatusEvent } from "./tasksApi";
+import { TaskStatusBadge, statusNames } from "./TaskStatusBadge";
 
 type Props = {
   taskId: string;
   isManager: boolean;
   onBack: () => void;
   onStatusChange: (taskId: string, status: TaskStatus) => void;
-};
-
-export const statusNames: Record<TaskStatus, string> = {
-  new: "Новая",
-  in_progress: "В работе",
-  in_review: "На проверке",
-  accepted: "Принята",
-  rework: "На доработке",
 };
 
 const actionNames: Partial<Record<TaskStatus, string>> = {
@@ -54,22 +47,29 @@ export function TaskDetails({ taskId, isManager, onBack, onStatusChange }: Props
     let active = true;
     setLoading(true);
     setError("");
-    void Promise.all([getTaskDetails(taskId), listTaskHistory(taskId)])
-      .then(([taskData, historyData]) => {
-        if (!active) return;
-        setTask(taskData);
-        setHistory(historyData);
-        setHistoryError("");
-      })
+    setTask(null);
+    setHistory([]);
+    setHistoryLoading(true);
+
+    void getTaskDetails(taskId)
+      .then((taskData) => { if (active) setTask(taskData); })
       .catch((reason: unknown) => {
         if (active) setError(errorMessage(reason, "Задача недоступна, удалена или не найдена."));
       })
-      .finally(() => {
+      .finally(() => { if (active) setLoading(false); });
+
+    void listTaskHistory(taskId)
+      .then((historyData) => {
         if (active) {
-          setLoading(false);
-          setHistoryLoading(false);
+          setHistory(historyData);
+          setHistoryError("");
         }
-      });
+      })
+      .catch((reason: unknown) => {
+        if (active) setHistoryError(errorMessage(reason, "Не удалось загрузить историю задачи."));
+      })
+      .finally(() => { if (active) setHistoryLoading(false); });
+
     return () => { active = false; };
   }, [taskId]);
 
@@ -112,7 +112,7 @@ export function TaskDetails({ taskId, isManager, onBack, onStatusChange }: Props
           : task && <>
             <header className={styles.header}>
               <div><p className={styles.eyebrow}>Карточка задачи</p><h2 id="task-details-title">{task.title}</h2></div>
-              <span className={styles.status}>{statusNames[task.status]}</span>
+              <TaskStatusBadge status={task.status} />
             </header>
             {error && <p className={styles.error} role="alert">{error}</p>}
             <dl className={styles.details}>
@@ -121,7 +121,6 @@ export function TaskDetails({ taskId, isManager, onBack, onStatusChange }: Props
               <div><dt>Исполнитель</dt><dd>{task.assignee?.display_name ?? "Не указан"}</dd></div>
               <div><dt>Автор</dt><dd>{task.author?.display_name ?? "Не указан"}</dd></div>
               <div><dt>Создана</dt><dd>{new Date(task.created_at).toLocaleString()}</dd></div>
-              <div><dt>Текущий статус</dt><dd>{statusNames[task.status]}</dd></div>
             </dl>
 
             {actions.length > 0 && <section className={styles.actionsSection} aria-label="Действия со статусом">
@@ -145,10 +144,14 @@ export function TaskDetails({ taskId, isManager, onBack, onStatusChange }: Props
               {historyLoading ? <p role="status">Загружаем историю…</p>
                 : history.length === 0 ? <p className={styles.muted}>История пока пуста.</p>
                   : <ol className={styles.events}>{history.map((event) => <li key={event.id}>
-                    <time dateTime={event.created_at}>{new Date(event.created_at).toLocaleString()}</time>
-                    <strong>{event.actor?.display_name ?? "Пользователь"}</strong>
-                    <span>{event.from_status ? statusNames[event.from_status] : "—"} → {statusNames[event.to_status]}</span>
-                    {event.comment && <p>{event.comment}</p>}
+                    <div className={styles.eventTop}>
+                      <time dateTime={event.created_at}>{new Date(event.created_at).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}</time>
+                      <TaskStatusBadge status={event.to_status} />
+                    </div>
+                    <div className={styles.eventBottom}>
+                      <strong title={event.actor?.display_name ?? "Пользователь"}>{event.actor?.display_name ?? "Пользователь"}</strong>
+                      {event.comment && <span className={styles.comment} title={event.comment}>{event.comment}</span>}
+                    </div>
                   </li>)}</ol>}
             </section>
           </>}

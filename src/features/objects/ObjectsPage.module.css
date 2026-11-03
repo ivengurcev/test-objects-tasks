@@ -32,7 +32,11 @@
 .objectList li { border: 1px solid #e0e7df; border-radius: 10px; }
 .objectLink { display: grid; width: 100%; gap: 5px; padding: 16px; border: 0; border-radius: inherit; background: transparent; color: inherit; text-align: left; cursor: pointer; }
 .objectLink:hover, .objectLink:focus-visible { background: #f6f8f5; }
-.objectLink span { color: #68736b; }
+.objectAddress { color: #68736b; }
+.counts { display: flex; flex-wrap: wrap; gap: 12px; padding-top: 3px; color: #58645b; font-size: .78rem; font-weight: 600; }
+.countState, .countError { padding-top: 3px; font-size: .78rem; }
+.countState { color: #68736b; }
+.countError { color: #9d332b; }
 .backButton { margin: 18px 0; }
 .form { display: grid; gap: 16px; margin: 20px 0; padding: 20px; border: 1px solid #e0e7df; border-radius: 12px; }
 .form h2 { margin: 0; font-size: 1.15rem; }

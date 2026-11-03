@@ -1,7 +1,7 @@
 import { useEffect, useState, type SubmitEvent } from "react";
 import type { Profile } from "./types";
 import styles from "./ObjectsPage.module.css";
-import { createObject, deleteObject, listObjects, updateObject, type CrmObject } from "./objectsApi";
+import { createObject, deleteObject, listActiveTaskStatuses, listObjects, updateObject, type CrmObject } from "./objectsApi";
 import { TasksPanel } from "../tasks/TasksPanel";
 
 type Props = {
@@ -11,6 +11,7 @@ type Props = {
 };
 
 type View = "list" | { object: CrmObject };
+type TaskCounts = Record<string, { completed: number; open: number }>;
 
 export function ObjectsPage({ profile, onSignOut, signOutError }: Props) {
   const isManager = profile.role === "manager";
@@ -18,6 +19,9 @@ export function ObjectsPage({ profile, onSignOut, signOutError }: Props) {
   const [view, setView] = useState<View>("list");
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
+  const [taskCounts, setTaskCounts] = useState<TaskCounts>({});
+  const [countsLoading, setCountsLoading] = useState(true);
+  const [countsError, setCountsError] = useState("");
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
   const [editing, setEditing] = useState(false);
@@ -40,8 +44,29 @@ export function ObjectsPage({ profile, onSignOut, signOutError }: Props) {
     }
   };
 
+  const refreshTaskCounts = async () => {
+    setCountsLoading(true);
+    setCountsError("");
+    try {
+      const rows = await listActiveTaskStatuses();
+      const next: TaskCounts = {};
+      for (const row of rows) {
+        const counts = next[row.object_id] ??= { completed: 0, open: 0 };
+        if (row.status === "accepted") counts.completed += 1;
+        else if (["new", "in_progress", "in_review", "rework"].includes(row.status)) counts.open += 1;
+      }
+      setTaskCounts(next);
+    } catch {
+      setTaskCounts({});
+      setCountsError("Не удалось загрузить счётчики задач.");
+    } finally {
+      setCountsLoading(false);
+    }
+  };
+
   useEffect(() => {
     void refreshObjects();
+    void refreshTaskCounts();
   }, []);
 
   const openObject = (object: CrmObject) => {
@@ -97,6 +122,11 @@ export function ObjectsPage({ profile, onSignOut, signOutError }: Props) {
     try {
       await deleteObject(object.id);
       setObjects((current) => current.filter((item) => item.id !== object.id));
+      setTaskCounts((current) => {
+        const next = { ...current };
+        delete next[object.id];
+        return next;
+      });
       setView("list");
     } catch {
       setFormError("Не удалось удалить объект. Проверьте права доступа и попробуйте ещё раз.");
@@ -117,7 +147,7 @@ export function ObjectsPage({ profile, onSignOut, signOutError }: Props) {
       </header>
       {signOutError && <p className={styles.error} role="alert">{signOutError}</p>}
 
-      {view !== "list" && <button className={styles.backButton} type="button" onClick={() => { setView("list"); setEditing(false); setFormError(""); }}>← Все объекты</button>}
+      {view !== "list" && <button className={styles.backButton} type="button" onClick={() => { setView("list"); setEditing(false); setFormError(""); void refreshTaskCounts(); }}>← Все объекты</button>}
 
       {formError && <p className={styles.error} role="alert">{formError}</p>}
 
@@ -142,7 +172,13 @@ export function ObjectsPage({ profile, onSignOut, signOutError }: Props) {
               : objects.length === 0 ? <p className={styles.empty}>Пока нет доступных объектов.</p>
                 : <ul className={styles.objectList}>{objects.map((object) => <li key={object.id}>
                   <button className={styles.objectLink} type="button" onClick={() => openObject(object)}>
-                    <strong>{object.name}</strong><span>{object.address}</span>
+                    <strong>{object.name}</strong><span className={styles.objectAddress}>{object.address}</span>
+                    <span className={countsLoading ? styles.countState : countsError ? styles.countError : styles.counts}>
+                      {countsLoading ? "Обновляем счётчики…" : countsError ? "Счётчики недоступны" : <>
+                        <span>Выполнено: {taskCounts[object.id]?.completed ?? 0}</span>
+                        <span>Незакрыто: {taskCounts[object.id]?.open ?? 0}</span>
+                      </>}
+                    </span>
                   </button>
                 </li>)}</ul>}
         </>
