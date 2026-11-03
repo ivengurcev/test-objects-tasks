@@ -23,10 +23,43 @@ React, TypeScript, esbuild, Yarn Berry с Plug'n'Play, CSS Modules, Supabase Clo
 - [Технические требования и ограничения](docs/arch-rules.md)
 - [Предлагаемая архитектура](docs/architecture.md)
 
-## Локальный запуск
+## Требования
 
-Инструкция локального запуска будет добавлена после создания приложения и проверки команд запуска.
+- Node.js 24 или новее.
+- Yarn 4.18.1 через Corepack.
 
-## Настройка Supabase
+## Установка и локальный запуск
 
-Инструкция по созданию и настройке проекта Supabase, применению миграций и созданию тестовых пользователей будет добавлена после подготовки соответствующей конфигурации. Секретные ключи нельзя добавлять в Git или frontend.
+```sh
+corepack enable
+yarn install
+```
+
+Создай `.env.local` в корне проекта по примеру `.env.example` и укажи URL проекта Supabase и его publishable key:
+
+```dotenv
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_PUBLISHABLE_KEY=your-publishable-key
+```
+
+Запусти локальный сервер:
+
+```sh
+yarn dev
+```
+
+Сервер разработки доступен по адресу http://127.0.0.1:3000. Без заполненных настроек Supabase приложение запускается и показывает сообщение о необходимости подключения. Значения Supabase подставляются в браузерную сборку; используй только публичный publishable key, никогда не помещай `service_role` или secret key во frontend.
+
+## Production-сборка
+
+```sh
+yarn build
+```
+
+Сборка с минификацией записывается в `dist/`. Если нужен Supabase в production, переменные окружения должны быть заданы в среде сборки.
+
+## Проверка типов
+
+```sh
+yarn typecheck
+```
