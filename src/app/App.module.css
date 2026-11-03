@@ -60,6 +60,100 @@
   font-size: 0.9rem;
 }
 
+.form,
+.profile,
+.notice {
+  display: grid;
+  gap: 18px;
+  margin-top: 24px;
+}
+
+.field {
+  display: grid;
+  gap: 8px;
+  color: #344239;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.field input {
+  width: 100%;
+  min-height: 46px;
+  padding: 10px 12px;
+  border: 1px solid #cfd9cf;
+  border-radius: 8px;
+  color: inherit;
+  font: inherit;
+}
+
+.field input:focus {
+  border-color: #43875b;
+  outline: 3px solid rgb(67 135 91 / 18%);
+}
+
+.primaryButton,
+.secondaryButton {
+  min-height: 46px;
+  padding: 10px 16px;
+  border: 0;
+  border-radius: 8px;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.primaryButton {
+  background: #315f3e;
+  color: white;
+}
+
+.primaryButton:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.secondaryButton {
+  justify-self: start;
+  background: #e9eee9;
+  color: #344239;
+}
+
+.error,
+.notice {
+  color: #9d332b;
+}
+
+.error,
+.notice p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.details {
+  display: grid;
+  gap: 14px;
+  margin: 0;
+  padding: 18px 0;
+  border-top: 1px solid #edf0ec;
+  border-bottom: 1px solid #edf0ec;
+}
+
+.details div {
+  display: grid;
+  gap: 4px;
+}
+
+.details dt {
+  color: #68736b;
+  font-size: 0.8rem;
+}
+
+.details dd {
+  overflow-wrap: anywhere;
+  margin: 0;
+  font-weight: 600;
+}
+
 .indicator {
   width: 9px;
   height: 9px;
