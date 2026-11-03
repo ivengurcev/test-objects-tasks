@@ -60,6 +60,84 @@ yarn build
 
 Сборка с минификацией записывается в `dist/`. Если нужен Supabase в production, переменные окружения должны быть заданы в среде сборки.
 
+## Docker
+
+Production-образ собирается в два этапа: Node.js 24 и Yarn 4 выполняют установку зависимостей, проверку типов и сборку, а Nginx Alpine раздаёт только содержимое `dist/` на внутреннем порту `8080`. Отдельный backend не запускается. Docker-сборка требует `SUPABASE_URL` и `SUPABASE_PUBLISHABLE_KEY`; это публичные настройки frontend, не передавай сюда `service_role`, пароли или другие секреты.
+
+Убедись, что Docker доступен, затем передай настройки из `.env.local` как build arguments. Файлы `.env*` исключены из Docker build context и образа.
+
+```sh
+set -a
+. ./.env.local
+set +a
+docker build \
+  --build-arg SUPABASE_URL \
+  --build-arg SUPABASE_PUBLISHABLE_KEY \
+  --tag test-objects-tasks:latest \
+  .
+```
+
+Сохранить образ в архив и перенести его на VPS:
+
+```sh
+docker save --output test-objects-tasks.tar test-objects-tasks:latest
+scp test-objects-tasks.tar <user>@<server>:/tmp/
+```
+
+На сервере загрузить образ и запустить контейнер, доступный только локально на VPS:
+
+```sh
+docker load --input /tmp/test-objects-tasks.tar
+docker run --detach \
+  --name mini-crm \
+  --restart unless-stopped \
+  --publish 127.0.0.1:8080:8080 \
+  test-objects-tasks:latest
+```
+
+Порт `8080` здесь привязан только к loopback-интерфейсу VPS и предназначен для существующего Nginx. Если он занят, выбери свободный локальный порт и измени upstream Nginx. Внутри существующего HTTPS `server` block добавь location, не меняя его внешний порт и TLS-настройки:
+
+```nginx
+location / {
+    proxy_pass http://127.0.0.1:8080;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
+```
+
+TLS остаётся на внешнем Nginx; прямой внешний порт контейнеру не открывается.
+
+Проверить ответ, статические файлы и SPA fallback:
+
+```sh
+curl --fail --head http://127.0.0.1:8080/
+curl --fail --head http://127.0.0.1:8080/main.js
+curl --fail --head http://127.0.0.1:8080/main.css
+curl --fail --head http://127.0.0.1:8080/example/client/path
+```
+
+Для обновления замени образ архивом новой сборки, загрузи его через `docker load`, затем пересоздай контейнер:
+
+```sh
+docker stop mini-crm
+docker rm mini-crm
+docker run --detach \
+  --name mini-crm \
+  --restart unless-stopped \
+  --publish 127.0.0.1:8080:8080 \
+  test-objects-tasks:latest
+```
+
+Просмотр логов:
+
+```sh
+docker logs --follow --tail 100 mini-crm
+```
+
+Публикация на VPS в рамках этой инструкции не выполняется; этап 6 останется открытым до фактического развёртывания и проверки приложения.
+
 ## Проверка типов
 
 ```sh

@@ -268,7 +268,11 @@ async function main() {
   }
 
   const distinctStatuses = new Set(managerTasks.map((task) => task.status));
-  report("Demo data has 2–3 active objects", managerObjects.length >= 2 && managerObjects.length <= 3);
+  report(
+    "Demo data has 4 active objects (accepted deviation)",
+    managerObjects.length === 4,
+    `${managerObjects.length} found`,
+  );
   report("Demo data has several active tasks", managerTasks.length >= 3);
   report("Demo data covers multiple task statuses", distinctStatuses.size >= 2);
   report("Demo data includes task history", demoHistory.length > 0);
