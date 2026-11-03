@@ -9,7 +9,11 @@
   "scripts": {
     "dev": "node --env-file-if-exists=.env.local scripts/build.mjs --dev",
     "build": "node --env-file-if-exists=.env.local scripts/build.mjs",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "db:start": "supabase start",
+    "db:reset": "supabase db reset",
+    "db:test": "supabase test db",
+    "db:stop": "supabase stop"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.89.0",
@@ -20,6 +24,7 @@
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "esbuild": "^0.27.2",
+    "supabase": "^2.122.0",
     "typescript": "^5.9.3"
   }
 }

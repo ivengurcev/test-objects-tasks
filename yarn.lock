@@ -5,6 +5,15 @@ __metadata:
   version: 10
   cacheKey: 10c0
 
+"@ecies/ciphers@npm:^0.2.6":
+  version: 0.2.6
+  resolution: "@ecies/ciphers@npm:0.2.6"
+  peerDependencies:
+    "@noble/ciphers": ^1.0.0
+  checksum: 10c0/31cbfbaedae690e12344e49eb1b7fd0697f36cf4d03100df52b925e1f19d02a6f445834938ecdd1cd74154496a74fa9147cdda6209255512220e45eb9c693ca0
+  languageName: node
+  linkType: hard
+
 "@esbuild/aix-ppc64@npm:0.27.7":
   version: 0.27.7
   resolution: "@esbuild/aix-ppc64@npm:0.27.7"
@@ -187,12 +196,91 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@noble/ciphers@npm:^1.3.0":
+  version: 1.3.0
+  resolution: "@noble/ciphers@npm:1.3.0"
+  checksum: 10c0/3ba6da645ce45e2f35e3b2e5c87ceba86b21dfa62b9466ede9edfb397f8116dae284f06652c0cd81d99445a2262b606632e868103d54ecc99fd946ae1af8cd37
+  languageName: node
+  linkType: hard
+
+"@noble/curves@npm:^1.9.7":
+  version: 1.9.7
+  resolution: "@noble/curves@npm:1.9.7"
+  dependencies:
+    "@noble/hashes": "npm:1.8.0"
+  checksum: 10c0/150014751ebe8ca06a8654ca2525108452ea9ee0be23430332769f06808cddabfe84f248b6dbf836916bc869c27c2092957eec62c7506d68a1ed0a624017c2a3
+  languageName: node
+  linkType: hard
+
+"@noble/hashes@npm:1.8.0, @noble/hashes@npm:^1.8.0":
+  version: 1.8.0
+  resolution: "@noble/hashes@npm:1.8.0"
+  checksum: 10c0/06a0b52c81a6fa7f04d67762e08b2c476a00285858150caeaaff4037356dd5e119f45b2a530f638b77a5eeca013168ec1b655db41bae3236cb2e9d511484fc77
+  languageName: node
+  linkType: hard
+
 "@supabase/auth-js@npm:2.118.0":
   version: 2.118.0
   resolution: "@supabase/auth-js@npm:2.118.0"
   dependencies:
     tslib: "npm:2.8.1"
   checksum: 10c0/df0349732f296365bcb49b59adc267025bec2872be9fbd07a8d768c89456308b68719a23f5ee2ab3d53a6558282a04d614ba3c5c8093c11ae3ee3f332eab02f1
+  languageName: node
+  linkType: hard
+
+"@supabase/cli-darwin-arm64@npm:2.122.0":
+  version: 2.122.0
+  resolution: "@supabase/cli-darwin-arm64@npm:2.122.0"
+  conditions: os=darwin & cpu=arm64
+  languageName: node
+  linkType: hard
+
+"@supabase/cli-darwin-x64@npm:2.122.0":
+  version: 2.122.0
+  resolution: "@supabase/cli-darwin-x64@npm:2.122.0"
+  conditions: os=darwin & cpu=x64
+  languageName: node
+  linkType: hard
+
+"@supabase/cli-linux-arm64-musl@npm:2.122.0":
+  version: 2.122.0
+  resolution: "@supabase/cli-linux-arm64-musl@npm:2.122.0"
+  conditions: os=linux & cpu=arm64 & libc=musl
+  languageName: node
+  linkType: hard
+
+"@supabase/cli-linux-arm64@npm:2.122.0":
+  version: 2.122.0
+  resolution: "@supabase/cli-linux-arm64@npm:2.122.0"
+  conditions: os=linux & cpu=arm64 & libc=glibc
+  languageName: node
+  linkType: hard
+
+"@supabase/cli-linux-x64-musl@npm:2.122.0":
+  version: 2.122.0
+  resolution: "@supabase/cli-linux-x64-musl@npm:2.122.0"
+  conditions: os=linux & cpu=x64 & libc=musl
+  languageName: node
+  linkType: hard
+
+"@supabase/cli-linux-x64@npm:2.122.0":
+  version: 2.122.0
+  resolution: "@supabase/cli-linux-x64@npm:2.122.0"
+  conditions: os=linux & cpu=x64 & libc=glibc
+  languageName: node
+  linkType: hard
+
+"@supabase/cli-windows-arm64@npm:2.122.0":
+  version: 2.122.0
+  resolution: "@supabase/cli-windows-arm64@npm:2.122.0"
+  conditions: os=win32 & cpu=arm64
+  languageName: node
+  linkType: hard
+
+"@supabase/cli-windows-x64@npm:2.122.0":
+  version: 2.122.0
+  resolution: "@supabase/cli-windows-x64@npm:2.122.0"
+  conditions: os=win32 & cpu=x64
   languageName: node
   linkType: hard
 
@@ -281,6 +369,18 @@ __metadata:
   version: 3.2.3
   resolution: "csstype@npm:3.2.3"
   checksum: 10c0/cd29c51e70fa822f1cecd8641a1445bed7063697469d35633b516e60fe8c1bde04b08f6c5b6022136bb669b64c63d4173af54864510fbb4ee23281801841a3ce
+  languageName: node
+  linkType: hard
+
+"eciesjs@npm:^0.5.0":
+  version: 0.5.0
+  resolution: "eciesjs@npm:0.5.0"
+  dependencies:
+    "@ecies/ciphers": "npm:^0.2.6"
+    "@noble/ciphers": "npm:^1.3.0"
+    "@noble/curves": "npm:^1.9.7"
+    "@noble/hashes": "npm:^1.8.0"
+  checksum: 10c0/a80ee11f20f03df522ddb53d19c8cb36b957b471c5a515315d94dadc2ed00672354c339250ded8fb9bd39f6b66961ab86e4463597cbb03023bfc5a606ac5e242
   languageName: node
   linkType: hard
 
@@ -380,6 +480,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"jose@npm:^6.2.10":
+  version: 6.2.15
+  resolution: "jose@npm:6.2.15"
+  checksum: 10c0/0e72e53ead0e01adc4598438f889e753622043806a7ba0c802f7cd7da17466e5a6167a63b4b4e67490944c9f88eb0dd5c81c05aca2c38a72718443632a7b37b5
+  languageName: node
+  linkType: hard
+
 "objects-and-tasks@workspace:.":
   version: 0.0.0-use.local
   resolution: "objects-and-tasks@workspace:."
@@ -390,6 +497,7 @@ __metadata:
     esbuild: "npm:^0.27.2"
     react: "npm:^19.2.0"
     react-dom: "npm:^19.2.0"
+    supabase: "npm:^2.122.0"
     typescript: "npm:^5.9.3"
   languageName: unknown
   linkType: soft
@@ -416,6 +524,43 @@ __metadata:
   version: 0.28.0
   resolution: "scheduler@npm:0.28.0"
   checksum: 10c0/783c8e5ce89d41273a02ed6dc0e3d24bd60e05c9e8f7e3adfc6c82e7c69935500d90e343f1ee26d592fc7504e8a2532573c6368def3e93bfe812391fa53efaf4
+  languageName: node
+  linkType: hard
+
+"supabase@npm:^2.122.0":
+  version: 2.122.0
+  resolution: "supabase@npm:2.122.0"
+  dependencies:
+    "@supabase/cli-darwin-arm64": "npm:2.122.0"
+    "@supabase/cli-darwin-x64": "npm:2.122.0"
+    "@supabase/cli-linux-arm64": "npm:2.122.0"
+    "@supabase/cli-linux-arm64-musl": "npm:2.122.0"
+    "@supabase/cli-linux-x64": "npm:2.122.0"
+    "@supabase/cli-linux-x64-musl": "npm:2.122.0"
+    "@supabase/cli-windows-arm64": "npm:2.122.0"
+    "@supabase/cli-windows-x64": "npm:2.122.0"
+    eciesjs: "npm:^0.5.0"
+    jose: "npm:^6.2.10"
+  dependenciesMeta:
+    "@supabase/cli-darwin-arm64":
+      optional: true
+    "@supabase/cli-darwin-x64":
+      optional: true
+    "@supabase/cli-linux-arm64":
+      optional: true
+    "@supabase/cli-linux-arm64-musl":
+      optional: true
+    "@supabase/cli-linux-x64":
+      optional: true
+    "@supabase/cli-linux-x64-musl":
+      optional: true
+    "@supabase/cli-windows-arm64":
+      optional: true
+    "@supabase/cli-windows-x64":
+      optional: true
+  bin:
+    supabase: dist/supabase.js
+  checksum: 10c0/9ecc03cc0c15d3c10a42e09bb0820d6f765f1202e0cc976bdf1c0454a8aed1df1d19185b7c48a19bb28a8d187f2b0ab6919c127b9ce084ba06686f3e665bb811
   languageName: node
   linkType: hard
 
