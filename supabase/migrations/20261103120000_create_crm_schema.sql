@@ -1,5 +1,5 @@
 create schema if not exists private;
-revoke all on schema private from public, anon, authenticated, service_role;
+revoke all on schema private from public, anon, authenticated;
 grant usage on schema private to authenticated;
 
 do $$
@@ -74,7 +74,7 @@ as $$
   select auth.uid()
 $$;
 
-revoke all on function private.current_user_id() from public, anon, authenticated, service_role;
+revoke all on function private.current_user_id() from public, anon, authenticated;
 grant execute on function private.current_user_id() to crm_rpc_owner;
 
 create function private.current_role()
@@ -89,7 +89,7 @@ as $$
   where p.id = (select private.current_user_id())
 $$;
 
-revoke all on function private.current_role() from public, anon, authenticated, service_role;
+revoke all on function private.current_role() from public, anon, authenticated;
 grant execute on function private.current_role() to authenticated, crm_rpc_owner;
 
 create function private.enforce_executor_assignee()
@@ -112,13 +112,13 @@ begin
 end;
 $$;
 
-revoke all on function private.enforce_executor_assignee() from public, anon, authenticated, service_role;
+revoke all on function private.enforce_executor_assignee() from public, anon, authenticated;
 
 create trigger tasks_assignee_must_be_executor
 before insert or update of assignee_id on public.tasks
 for each row execute function private.enforce_executor_assignee();
 
-revoke all on public.profiles, public.objects, public.tasks, public.task_status_history from public, anon, authenticated, service_role;
+revoke all on public.profiles, public.objects, public.tasks, public.task_status_history from public, anon, authenticated;
 grant select on public.profiles, public.objects, public.tasks, public.task_status_history to authenticated;
 grant insert (name, address) on public.objects to authenticated;
 grant update (name, address) on public.objects to authenticated;
@@ -127,6 +127,27 @@ grant update (title, description, assignee_id) on public.tasks to authenticated;
 create policy profiles_read_own_or_manager
 on public.profiles for select to authenticated
 using (id = (select auth.uid()) or (select private.current_role()) = 'manager');
+
+create policy profiles_read_task_participants
+on public.profiles for select to authenticated
+using (
+  (select private.current_role()) = 'executor'
+  and exists (
+    select 1
+    from public.tasks as t
+    where t.assignee_id = (select auth.uid())
+      and t.deleted_at is null
+      and (
+        t.author_id = profiles.id
+        or exists (
+          select 1
+          from public.task_status_history as h
+          where h.task_id = t.id
+            and h.actor_id = profiles.id
+        )
+      )
+  )
+);
 
 create policy objects_read_active
 on public.objects for select to authenticated
@@ -240,7 +261,7 @@ begin
 end;
 $$;
 
-revoke all on function public.create_task(uuid, text, text, uuid) from public, anon, authenticated, service_role;
+revoke all on function public.create_task(uuid, text, text, uuid) from public, anon, authenticated;
 grant execute on function public.create_task(uuid, text, text, uuid) to authenticated;
 
 create function public.transition_task_status(
@@ -311,7 +332,7 @@ begin
 end;
 $$;
 
-revoke all on function public.transition_task_status(uuid, text, text) from public, anon, authenticated, service_role;
+revoke all on function public.transition_task_status(uuid, text, text) from public, anon, authenticated;
 grant execute on function public.transition_task_status(uuid, text, text) to authenticated;
 
 create function public.delete_task(p_task_id uuid)
@@ -336,7 +357,7 @@ begin
 end;
 $$;
 
-revoke all on function public.delete_task(uuid) from public, anon, authenticated, service_role;
+revoke all on function public.delete_task(uuid) from public, anon, authenticated;
 grant execute on function public.delete_task(uuid) to authenticated;
 
 create function public.delete_object(p_object_id uuid)
@@ -373,7 +394,7 @@ begin
 end;
 $$;
 
-revoke all on function public.delete_object(uuid) from public, anon, authenticated, service_role;
+revoke all on function public.delete_object(uuid) from public, anon, authenticated;
 grant execute on function public.delete_object(uuid) to authenticated;
 
 grant create on schema public, private to crm_rpc_owner;

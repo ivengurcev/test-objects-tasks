@@ -1,6 +1,6 @@
 begin;
 
-select plan(65);
+select plan(68);
 
 insert into auth.users (id, email, encrypted_password, email_confirmed_at)
 values
@@ -82,16 +82,7 @@ select ok((
   )
     and pg_catalog.has_function_privilege('authenticated', p.oid, 'EXECUTE')
     and not pg_catalog.has_function_privilege('anon', p.oid, 'EXECUTE')
-    and not pg_catalog.has_function_privilege('service_role', p.oid, 'EXECUTE')
 ), 'only authenticated can execute privileged RPCs');
-select ok(
-  not pg_catalog.has_table_privilege('service_role', 'public.profiles', 'SELECT')
-  and not pg_catalog.has_table_privilege('service_role', 'public.objects', 'INSERT')
-  and not pg_catalog.has_table_privilege('service_role', 'public.tasks', 'INSERT')
-  and not pg_catalog.has_table_privilege('service_role', 'public.tasks', 'UPDATE')
-  and not pg_catalog.has_table_privilege('service_role', 'public.task_status_history', 'INSERT'),
-  'service_role has no direct access to CRM tables'
-);
 select ok((
   select p.prosecdef
     and p.proconfig @> array['search_path=""']
@@ -99,7 +90,6 @@ select ok((
     and pg_catalog.has_function_privilege('crm_rpc_owner', p.oid, 'EXECUTE')
     and not pg_catalog.has_function_privilege('authenticated', p.oid, 'EXECUTE')
     and not pg_catalog.has_function_privilege('anon', p.oid, 'EXECUTE')
-    and not pg_catalog.has_function_privilege('service_role', p.oid, 'EXECUTE')
   from pg_catalog.pg_proc as p
   where p.oid = 'private.current_user_id()'::regprocedure
 ), 'auth.uid helper only returns the current id to the restricted RPC owner');
@@ -111,6 +101,14 @@ set local role authenticated;
 select is((select count(*)::integer from public.tasks), 2, 'executor sees only assigned active tasks');
 select is((select count(*)::integer from public.objects), 1, 'executor sees only objects with assigned active tasks');
 select ok(not exists (select 1 from public.tasks where id = '30000000-0000-0000-0000-000000000002'), 'executor cannot see another executor task');
+select ok(exists (
+  select 1
+  from public.tasks as t
+  join public.profiles as author on author.id = t.author_id
+  where t.id = '30000000-0000-0000-0000-000000000001'
+    and author.display_name = 'Manager'
+), 'executor reads the author profile of an assigned task');
+select is((select count(*)::integer from public.profiles where id = '10000000-0000-0000-0000-000000000003'), 0, 'executor cannot read an unrelated executor profile');
 select throws_ok($$select public.create_task('20000000-0000-0000-0000-000000000001', 'Forbidden', null, '10000000-0000-0000-0000-000000000002')$$, '42501', 'manager role required', 'executor cannot create tasks');
 select lives_ok($$update public.tasks set title = 'Changed' where id = '30000000-0000-0000-0000-000000000001'$$, 'RLS filters executor task edits');
 select is((select title from public.tasks where id = '30000000-0000-0000-0000-000000000001'), 'Task A', 'executor cannot edit task title directly');
@@ -118,6 +116,7 @@ select lives_ok($$update public.tasks set assignee_id = '10000000-0000-0000-0000
 select is((select assignee_id from public.tasks where id = '30000000-0000-0000-0000-000000000001'), '10000000-0000-0000-0000-000000000002'::uuid, 'executor cannot reassign tasks directly');
 select throws_ok($$update public.tasks set status = 'accepted' where id = '30000000-0000-0000-0000-000000000001'$$, '42501', 'permission denied for table tasks', 'executor cannot change status directly');
 select throws_ok($$update public.profiles set role = 'manager' where id = '10000000-0000-0000-0000-000000000002'$$, '42501', 'permission denied for table profiles', 'executor cannot promote their profile');
+select is((select role from public.profiles where id = '10000000-0000-0000-0000-000000000002'), 'executor', 'executor role remains unchanged after promotion attempt');
 select throws_ok($$insert into public.objects (name, address) values ('Forbidden', 'Nowhere')$$, '42501', 'new row violates row-level security policy for table "objects"', 'executor cannot create objects');
 select lives_ok($$update public.objects set address = 'Changed' where id = '20000000-0000-0000-0000-000000000001'$$, 'RLS filters executor object edits');
 select is((select address from public.objects where id = '20000000-0000-0000-0000-000000000001'), 'Address A', 'executor cannot edit objects');
@@ -156,6 +155,14 @@ reset role;
 select set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000002', true);
 select set_config('request.jwt.claims', '{"sub":"10000000-0000-0000-0000-000000000002","role":"authenticated"}', true);
 set local role authenticated;
+select ok(exists (
+  select 1
+  from public.task_status_history as h
+  join public.profiles as actor on actor.id = h.actor_id
+  where h.task_id = '30000000-0000-0000-0000-000000000001'
+    and h.to_status = 'rework'
+    and actor.display_name = 'Manager'
+), 'executor reads the profile of the manager who returned the task for rework');
 select lives_ok($$select public.transition_task_status('30000000-0000-0000-0000-000000000001', 'in_progress', null)$$, 'assigned executor can resume a task returned for rework');
 select lives_ok($$select public.transition_task_status('30000000-0000-0000-0000-000000000001', 'in_review', null)$$, 'assigned executor can resubmit a task after rework');
 
