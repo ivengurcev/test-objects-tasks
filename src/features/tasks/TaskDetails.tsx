@@ -3,6 +3,7 @@ import styles from "./TaskDetails.module.css";
 import { getTaskDetails, listTaskHistory, transitionTaskStatus, type TaskDetailsData, type TaskStatus, type TaskStatusEvent } from "./tasksApi";
 import { TaskStatusBadge } from "./TaskStatusBadge";
 import { reworkCommentError } from "./formValidation";
+import { shouldShowEmptyHistory } from "./historyView";
 
 type Props = {
   taskId: string;
@@ -183,8 +184,8 @@ export function TaskDetails({ taskId, isManager, onEdit, onStatusChange, onDelet
               <h3 id="task-history-title">История изменений</h3>
               {historyError && <div className={styles.errorBox} role="alert"><p>{historyError}</p><button className={styles.secondaryButton} type="button" onClick={() => void refreshHistory()}>Повторить</button></div>}
               {historyLoading ? <p role="status">Загружаем историю…</p>
-                : history.length === 0 ? <p className={styles.muted}>История пока пуста.</p>
-                  : <ol className={styles.events}>{history.map((event) => <li key={event.id}>
+                : shouldShowEmptyHistory(historyLoading, Boolean(historyError), history.length) ? <p className={styles.muted}>История пока пуста.</p>
+                  : !historyError && <ol className={styles.events}>{history.map((event) => <li key={event.id}>
                     <div className={styles.eventTop}>
                       <time dateTime={event.created_at}>{new Date(event.created_at).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}</time>
                       <TaskStatusBadge status={event.to_status} />
