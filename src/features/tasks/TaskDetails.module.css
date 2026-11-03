@@ -1,12 +1,13 @@
 .container { display: grid; gap: 20px; }
-.backButton, .primaryButton, .secondaryButton, .dangerButton { min-height: 40px; padding: 9px 14px; border: 0; border-radius: 8px; font: inherit; font-weight: 700; cursor: pointer; }
-.backButton, .secondaryButton { justify-self: start; background: #e9eee9; color: #344239; }
+.primaryButton, .secondaryButton, .dangerButton { min-height: 40px; padding: 9px 14px; border: 0; border-radius: 8px; font: inherit; font-weight: 700; cursor: pointer; }
+.secondaryButton { justify-self: start; background: #e9eee9; color: #344239; }
 .primaryButton { background: #315f3e; color: #fff; }
 .dangerButton { background: #f8e9e7; color: #9d332b; }
 .primaryButton:disabled, .dangerButton:disabled { cursor: wait; opacity: .65; }
-.header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding-bottom: 18px; border-bottom: 1px solid #edf0ec; }
-.header h2 { margin: 6px 0 0; font-size: clamp(1.5rem, 4vw, 2rem); overflow-wrap: anywhere; }
-.eyebrow { margin: 0; color: #55745e; font-size: .75rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.header { display: grid; gap: 5px; padding-bottom: 18px; border-bottom: 1px solid #edf0ec; }
+.header h1 { margin: 0; font-size: clamp(1.5rem, 4vw, 2rem); overflow-wrap: anywhere; }
+.subtitle { margin: 0; color: #68736b; font-size: .95rem; }
+.recordActions { display: flex; flex-wrap: wrap; gap: 10px; }
 .details { display: grid; gap: 16px; margin: 0; }
 .details div { display: grid; gap: 4px; }
 .details dt { color: #68736b; font-size: .85rem; }
@@ -32,5 +33,5 @@
 .errorBox p { margin: 0; line-height: 1.5; }
 
 @media (max-width: 560px) {
-  .header { flex-direction: column; }
+  .recordActions > button { flex: 1 1 auto; }
 }

@@ -1,13 +1,15 @@
 import { useEffect, useState } from "react";
 import styles from "./TaskDetails.module.css";
 import { getTaskDetails, listTaskHistory, transitionTaskStatus, type TaskDetailsData, type TaskStatus, type TaskStatusEvent } from "./tasksApi";
-import { TaskStatusBadge, statusNames } from "./TaskStatusBadge";
+import { TaskStatusBadge } from "./TaskStatusBadge";
 
 type Props = {
   taskId: string;
   isManager: boolean;
-  onBack: () => void;
+  onEdit: (task: TaskDetailsData) => void;
   onStatusChange: (taskId: string, status: TaskStatus) => void;
+  onDelete: (task: TaskDetailsData) => Promise<void>;
+  onDataChange: () => void;
 };
 
 const actionNames: Partial<Record<TaskStatus, string>> = {
@@ -21,7 +23,7 @@ function errorMessage(error: unknown, fallback: string) {
   return error instanceof Error && error.message ? `${fallback} ${error.message}` : fallback;
 }
 
-export function TaskDetails({ taskId, isManager, onBack, onStatusChange }: Props) {
+export function TaskDetails({ taskId, isManager, onEdit, onStatusChange, onDelete, onDataChange }: Props) {
   const [task, setTask] = useState<TaskDetailsData | null>(null);
   const [history, setHistory] = useState<TaskStatusEvent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -96,6 +98,7 @@ export function TaskDetails({ taskId, isManager, onBack, onStatusChange }: Props
       setTask((current) => current ? { ...current, status: newStatus } : current);
       onStatusChange(task.id, newStatus);
       setComment("");
+      onDataChange();
       await refreshHistory();
     } catch (reason) {
       setError(errorMessage(reason, "Не удалось изменить статус задачи."));
@@ -104,22 +107,38 @@ export function TaskDetails({ taskId, isManager, onBack, onStatusChange }: Props
     }
   };
 
+  const handleDelete = async () => {
+    if (!task || saving || !window.confirm(`Удалить задачу «${task.title}»?`)) return;
+    setSaving(true);
+    setError("");
+    try {
+      await onDelete(task);
+    } catch (reason) {
+      setError(errorMessage(reason, "Не удалось удалить задачу."));
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <section className={styles.container} aria-label="Карточка задачи">
-      <button className={styles.backButton} type="button" onClick={onBack}>← К списку задач</button>
       {loading ? <p role="status">Загружаем задачу…</p>
-        : error && !task ? <div className={styles.errorBox} role="alert"><p>{error}</p><button className={styles.secondaryButton} type="button" onClick={onBack}>Вернуться к списку</button></div>
+        : error && !task ? <div className={styles.errorBox} role="alert"><p>{error}</p></div>
           : task && <>
             <header className={styles.header}>
-              <div><p className={styles.eyebrow}>Карточка задачи</p><h2 id="task-details-title">{task.title}</h2></div>
-              <TaskStatusBadge status={task.status} />
+              <h1 id="task-details-title">Задача: {task.title}</h1>
+              <p className={styles.subtitle}>Постановщик: {task.author?.display_name ?? "Не указан"}</p>
             </header>
+            {isManager && <div className={styles.recordActions}>
+              <button className={styles.secondaryButton} type="button" onClick={() => onEdit(task)}>Редактировать</button>
+              <button className={styles.dangerButton} type="button" disabled={saving} onClick={() => void handleDelete()}>Удалить</button>
+            </div>}
             {error && <p className={styles.error} role="alert">{error}</p>}
             <dl className={styles.details}>
+              <div><dt>Текущий статус</dt><dd><TaskStatusBadge status={task.status} /></dd></div>
               <div><dt>Описание</dt><dd>{task.description || "—"}</dd></div>
               <div><dt>Объект</dt><dd>{task.object?.name ?? "Недоступен"}{task.object?.address ? ` · ${task.object.address}` : ""}</dd></div>
               <div><dt>Исполнитель</dt><dd>{task.assignee?.display_name ?? "Не указан"}</dd></div>
-              <div><dt>Автор</dt><dd>{task.author?.display_name ?? "Не указан"}</dd></div>
               <div><dt>Создана</dt><dd>{new Date(task.created_at).toLocaleString()}</dd></div>
             </dl>
 

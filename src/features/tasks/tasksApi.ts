@@ -84,14 +84,15 @@ export async function listTaskHistory(taskId: string): Promise<TaskStatusEvent[]
   return data as unknown as TaskStatusEvent[];
 }
 
-export async function createTask(objectId: string, title: string, description: string, assigneeId: string): Promise<void> {
-  const { error } = await client().rpc("create_task", {
+export async function createTask(objectId: string, title: string, description: string, assigneeId: string): Promise<string> {
+  const { data, error } = await client().rpc("create_task", {
     p_object_id: objectId,
     p_title: title,
     p_description: description,
     p_assignee_id: assigneeId,
   });
   if (error) throw error;
+  return data;
 }
 
 export async function updateTask(id: string, title: string, description: string, assigneeId: string): Promise<void> {
