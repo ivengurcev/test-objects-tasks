@@ -2,6 +2,7 @@ import { useEffect, useState, type SubmitEvent } from "react";
 import type { Profile } from "./types";
 import styles from "./ObjectsPage.module.css";
 import { createObject, deleteObject, listObjects, updateObject, type CrmObject } from "./objectsApi";
+import { TasksPanel } from "../tasks/TasksPanel";
 
 type Props = {
   profile: Profile;
@@ -163,10 +164,9 @@ export function ObjectsPage({ profile, onSignOut, signOutError }: Props) {
               <button className={styles.secondaryButton} type="button" onClick={() => { setEditing(false); setName(view.object.name); setAddress(view.object.address); setFormError(""); }}>Отмена</button>
             </div>
           </form>}
-          <section className={styles.tasks} aria-labelledby="object-tasks-title">
-            <h2 id="object-tasks-title">Задачи объекта</h2>
-            <p className={styles.empty}>Список задач будет доступен в следующем этапе.</p>
-          </section>
+          <div className={styles.tasks}>
+            <TasksPanel objectId={view.object.id} isManager={isManager} />
+          </div>
         </>
       )}
     </section>

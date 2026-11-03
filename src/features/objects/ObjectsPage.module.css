@@ -35,7 +35,7 @@
 .objectLink span { color: #68736b; }
 .backButton { margin: 18px 0; }
 .form { display: grid; gap: 16px; margin: 20px 0; padding: 20px; border: 1px solid #e0e7df; border-radius: 12px; }
-.form h2, .tasks h2 { margin: 0; font-size: 1.15rem; }
+.form h2 { margin: 0; font-size: 1.15rem; }
 .field { display: grid; gap: 7px; color: #344239; font-size: .9rem; font-weight: 600; }
 .field input { width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid #cfd9cf; border-radius: 8px; color: inherit; font: inherit; }
 .field input:focus { border-color: #43875b; outline: 3px solid rgb(67 135 91 / 18%); }
