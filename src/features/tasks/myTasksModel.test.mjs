@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { groupTasksByObject } from "./myTasksModel.ts";
+import { groupTasksByObject, groupMyTasks } from "./myTasksModel.ts";
 
 test("groups assigned tasks under their objects and omits empty objects", () => {
   const groups = groupTasksByObject([
@@ -23,4 +23,27 @@ test("groups assigned tasks under their objects and omits empty objects", () => 
 
 test("returns no groups for an empty assigned-task list", () => {
   assert.deepEqual(groupTasksByObject([]), []);
+});
+
+
+test("separates accepted tasks while preserving all four active statuses", () => {
+  const object = { id: "o-1", name: "Дом", address: "Адрес" };
+  const tasks = ["new", "in_progress", "in_review", "rework", "accepted"].map((status, i) => ({
+    id: `t-${i}`, title: status, status, object_id: "o-1", object,
+  }));
+  const { activeGroups, acceptedGroups } = groupMyTasks(tasks);
+  assert.deepEqual(activeGroups[0].tasks.map((task) => task.status), ["new", "in_progress", "in_review", "rework"]);
+  assert.deepEqual(acceptedGroups[0].tasks.map((task) => task.status), ["accepted"]);
+  assert.equal(tasks.length, 5);
+});
+
+test("keeps accepted-only objects available when there are no active tasks", () => {
+  const { activeGroups, acceptedGroups } = groupMyTasks([
+    { id: "a", title: "Принятая", status: "accepted", object_id: "o-1", object: { id: "o-1", name: "Дом", address: "Адрес" } },
+    { id: "hidden", title: "Недоступный объект", status: "new", object_id: "o-2", object: null },
+  ]);
+  assert.deepEqual(activeGroups, []);
+  assert.equal(acceptedGroups.length, 1);
+  assert.equal(acceptedGroups[0].tasks.length, 1);
+  assert.deepEqual(groupMyTasks([]), { activeGroups: [], acceptedGroups: [] });
 });

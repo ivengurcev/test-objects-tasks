@@ -1,6 +1,6 @@
-.badge { display: inline-flex; width: fit-content; align-items: center; border-radius: 999px; padding: 4px 9px; font-size: .82rem; font-weight: 700; line-height: 1.25; white-space: nowrap; }
-.new { background: #e9ecef; color: #374151; }
-.inProgress { background: #fff3cd; color: #795900; }
-.inReview { background: #dbeafe; color: #1e40af; }
-.rework { background: #fee2e2; color: #991b1b; }
-.accepted { background: #dcfce7; color: #166534; }
+.badge { display: inline-flex; width: fit-content; align-items: center; border-radius: 999px; padding: var(--space-xs) 9px; font-size: var(--font-size-badge); font-weight: var(--font-weight-bold); line-height: 1.25; white-space: nowrap; }
+.new { background: var(--color-status-new-surface); color: var(--color-status-new); }
+.inProgress { background: var(--color-status-progress-surface); color: var(--color-status-progress); }
+.inReview { background: var(--color-status-review-surface); color: var(--color-status-review); }
+.rework { background: var(--color-status-rework-surface); color: var(--color-status-rework); }
+.accepted { background: var(--color-status-accepted-surface); color: var(--color-status-accepted); }

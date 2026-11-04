@@ -1,0 +1,5 @@
+.empty { display: grid; justify-items: center; align-content: center; gap: var(--space-md); min-height: 260px; padding: var(--space-3xl) var(--space-xl); text-align: center; overflow-wrap: anywhere; }
+.icon { display: flex; color: var(--color-text-muted); }
+.empty h3 { margin: 0; font-size: var(--font-size-section-title); }
+.empty p { margin: 0; color: var(--color-text-muted); line-height: var(--line-height-body); }
+.action { max-width: 100%; margin-top: var(--space-sm); }

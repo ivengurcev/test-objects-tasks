@@ -1,0 +1,3 @@
+.actions { display: flex; flex-wrap: wrap; gap: var(--space-md); }
+.actions button { min-height: 44px; }
+.actions button:focus-visible { outline: 3px solid var(--color-focus-ring); outline-offset: 2px; }

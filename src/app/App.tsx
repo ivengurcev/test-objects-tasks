@@ -2,8 +2,11 @@ import { useEffect, useState, type SubmitEvent } from "react";
 import type { Session } from "@supabase/supabase-js";
 import styles from "./App.module.css";
 import { supabase, supabaseConfigured } from "../lib/supabase";
+import { AppHeader } from "./AppHeader";
 import { ObjectsPage } from "../features/objects/ObjectsPage";
 import { MyTasksPage } from "../features/tasks/MyTasksPage";
+import { navigate, usePathname } from "./navigation";
+import { getPathForRole, parseRoute } from "./routes";
 import type { Profile } from "../features/objects/types";
 
 type AuthState =
@@ -33,12 +36,15 @@ async function loadProfile(userId: string): Promise<Profile> {
 }
 
 export function App() {
+  const pathname = usePathname();
   const [authState, setAuthState] = useState<AuthState>({ status: "loading" });
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState("");
   const [signOutError, setSignOutError] = useState("");
+  const authorizedPath = authState.status === "signed-in" ? getPathForRole(authState.profile.role, pathname) : pathname;
+  const route = parseRoute(authorizedPath);
 
   useEffect(() => {
     if (!supabase) {
@@ -93,6 +99,15 @@ export function App() {
     };
   }, []);
 
+  useEffect(() => {
+    if (authState.status === "signed-in" && authorizedPath !== pathname) {
+      const timeout = window.setTimeout(() => {
+        navigate(authorizedPath, { replace: true });
+      }, 0);
+      return () => window.clearTimeout(timeout);
+    }
+  }, [authState, authorizedPath, pathname]);
+
   const handleSignIn = async (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!supabase) return;
@@ -115,17 +130,28 @@ export function App() {
     try {
       const { error } = await supabase.auth.signOut();
       if (error) setSignOutError("Не удалось завершить сеанс. Попробуйте ещё раз.");
+      else {
+        setAuthState({ status: "signed-out" });
+        navigate("/", { replace: true });
+      }
     } catch {
       setSignOutError("Не удалось связаться с Supabase. Сеанс не завершён.");
     }
   };
 
   return (
-    <main className={styles.page}>
+    <main className={authState.status === "signed-in" ? styles.workspace : styles.page}>
       {authState.status === "signed-in" ? (
-        authState.profile.role === "manager"
-          ? <ObjectsPage profile={authState.profile} onSignOut={handleSignOut} signOutError={signOutError} />
-          : <MyTasksPage profile={authState.profile} onSignOut={handleSignOut} signOutError={signOutError} />
+        <>
+          <AppHeader key={authState.profile.id} profile={authState.profile} onSignOut={handleSignOut} />
+          <div className={styles.content} data-page-content tabIndex={-1}>
+            {route.kind === "not-found"
+              ? <section className={styles.card}><h1>Страница не найдена</h1><button className={styles.secondaryButton} onClick={() => navigate(authState.profile.role === "manager" ? "/objects" : "/my-tasks")}>На главную</button></section>
+              : authState.profile.role === "executor"
+                ? <MyTasksPage key={authState.profile.id} profile={authState.profile} signOutError={signOutError} />
+                : <ObjectsPage key={authState.profile.id} profile={authState.profile} signOutError={signOutError} />}
+          </div>
+        </>
       ) : <section className={styles.card} aria-labelledby="app-title">
         <span className={styles.eyebrow}>Мини-CRM · строительство</span>
         <h1 id="app-title">Объекты и задачи</h1>

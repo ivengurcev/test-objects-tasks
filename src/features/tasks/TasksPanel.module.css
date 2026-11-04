@@ -1,28 +1,22 @@
 .section { display: grid; gap: 14px; }
-.heading, .task, .actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.heading h2 { margin: 0; font-size: 1.15rem; }
-.task { align-items: flex-start; padding: 16px; border: 1px solid #e0e7df; border-radius: 10px; }
-.taskInfo { display: grid; gap: 6px; }
-.taskLink { justify-self: start; padding: 0; border: 0; background: transparent; color: #315f3e; font: inherit; font-weight: 700; text-align: left; cursor: pointer; }
-.taskLink:hover, .taskLink:focus-visible { text-decoration: underline; }
-.muted { margin: 0; color: #68736b; font-size: .9rem; }
-.list { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
-.form { display: grid; gap: 14px; padding: 18px; border: 1px solid #e0e7df; border-radius: 12px; }
-.form h3 { margin: 0; font-size: 1rem; }
-.field { display: grid; gap: 7px; color: #344239; font-size: .9rem; font-weight: 600; }
-.fieldError { color: #9d332b; font-size: .85rem; font-weight: 500; }
-.field input, .field textarea, .field select { width: 100%; min-height: 42px; padding: 9px 11px; border: 1px solid #cfd9cf; border-radius: 8px; color: inherit; font: inherit; }
-.field textarea { resize: vertical; }
-.field input:focus, .field textarea:focus, .field select:focus { border-color: #43875b; outline: 3px solid rgb(67 135 91 / 18%); }
-.actions { justify-content: flex-start; flex-wrap: wrap; }
-.primaryButton, .secondaryButton, .dangerButton { min-height: 38px; padding: 8px 12px; border: 0; border-radius: 8px; font: inherit; font-size: .88rem; font-weight: 700; cursor: pointer; }
-.primaryButton { background: #315f3e; color: #fff; }
-.secondaryButton { background: #e9eee9; color: #344239; }
-.dangerButton { background: #f8e9e7; color: #9d332b; }
-.primaryButton:disabled, .secondaryButton:disabled, .dangerButton:disabled { cursor: wait; opacity: .65; }
-.empty { display: grid; justify-items: start; gap: 10px; margin: 0; padding: 18px; border-radius: 10px; background: #f6f8f5; color: #68736b; }
-.error { margin: 0; color: #9d332b; line-height: 1.5; }
+.muted { margin: 0; color: var(--color-text-muted); font-size: var(--font-size-label); }
+.secondaryButton { min-height: 38px; padding: var(--space-sm) var(--space-md); border: 0; border-radius: var(--radius-control); font: inherit; font-size: .88rem; font-weight: var(--font-weight-bold); cursor: pointer; }
+.secondaryButton { background: var(--color-secondary); color: var(--color-text-label); }
+.secondaryButton:disabled { cursor: wait; opacity: .65; }
+.empty { display: grid; justify-items: start; gap: 10px; margin: 0; padding: 18px; border-radius: var(--radius-item); background: var(--color-surface-subtle); color: var(--color-text-muted); }
+.error { margin: 0; color: var(--color-danger); line-height: var(--line-height-body); }
 
-@media (max-width: 620px) {
-  .task { flex-direction: column; }
+.taskHeading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--space-md); margin-bottom: var(--space-sm); }
+.taskHeading h2 { display: flex; align-items: baseline; gap: var(--space-sm); margin: 0; font-size: var(--font-size-section-title); }
+.taskTotal { color: var(--color-text-muted); font-size: var(--font-size-body); font-weight: var(--font-weight-medium); }
+.taskTableLayout { --data-table-row-height: 76px; --data-table-mobile-arrow-row: 1 / 3; }
+.taskTitle { min-width: 0; overflow-wrap: anywhere; font-weight: var(--font-weight-semibold); line-height: var(--line-height-body); }
+.taskAssignee { min-width: 0; overflow-wrap: anywhere; color: var(--color-text-muted); font-size: var(--font-size-label); line-height: var(--line-height-body); }
+.assigneeLabel { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.taskStatus { display: flex; align-items: center; }
+@media (max-width: 760px) {
+  .taskTitle { grid-column: 1; grid-row: 1; }
+  .taskStatus { grid-column: 1; grid-row: 2; }
+  .taskAssignee { grid-column: 1 / -1; grid-row: 3; }
+  .assigneeLabel { position: static; width: auto; height: auto; overflow: visible; clip-path: none; white-space: normal; }
 }

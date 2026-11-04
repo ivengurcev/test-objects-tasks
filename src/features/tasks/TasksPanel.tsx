@@ -1,5 +1,12 @@
-import { useCallback, useEffect, useState, type SubmitEvent } from "react";
+import { useEffect, useLayoutEffect, useState, type SubmitEvent } from "react";
+import { Button } from "../../components/Button";
+import { DataTable } from "../../components/DataTable";
+import { EmptyState } from "../../components/EmptyState";
+import { TaskListIcon } from "../../components/Icons";
+import { navigate as navigateTo, usePathname } from "../../app/navigation";
+import { parseRoute } from "../../app/routes";
 import styles from "./TasksPanel.module.css";
+import { TaskForm } from "./TaskForm";
 import { TaskDetails } from "./TaskDetails";
 import { TaskStatusBadge } from "./TaskStatusBadge";
 import { createTask, deleteTask, listExecutors, listTasks, updateTask, type CrmTask, type ExecutorProfile, type TaskStatus } from "./tasksApi";
@@ -9,7 +16,6 @@ type Props = {
   isManager: boolean;
   onViewChange: (view: TaskPanelView) => void;
   onDataChange: () => void;
-  onCreateActionChange: (action: (() => void) | null) => void;
 };
 
 export type TaskPanelView =
@@ -27,7 +33,7 @@ function errorMessage(error: unknown, fallback: string) {
   return error instanceof Error && error.message ? `${fallback} ${error.message}` : fallback;
 }
 
-export function TasksPanel({ objectId, isManager, onViewChange, onDataChange, onCreateActionChange }: Props) {
+export function TasksPanel({ objectId, isManager, onViewChange, onDataChange }: Props) {
   const [tasks, setTasks] = useState<CrmTask[]>([]);
   const [executors, setExecutors] = useState<ExecutorProfile[]>([]);
   const [executorsLoading, setExecutorsLoading] = useState(isManager);
@@ -37,7 +43,19 @@ export function TasksPanel({ objectId, isManager, onViewChange, onDataChange, on
   const [formError, setFormError] = useState("");
   const [titleError, setTitleError] = useState("");
   const [assigneeError, setAssigneeError] = useState("");
-  const [view, setView] = useState<TaskView>({ kind: "list" });
+  const pathname = usePathname();
+  const route = parseRoute(pathname);
+  const [formView, setFormView] = useState<{ path: string; view: TaskView } | null>(null);
+  const view: TaskView = formView?.path === pathname ? formView.view
+    : route.kind === "task" ? { kind: "card", taskId: route.taskId } : { kind: "list" };
+  const setView = (next: TaskView) => {
+    if (next.kind === "form") setFormView({ path: pathname, view: next });
+    else {
+      setFormView(null);
+      navigateTo(next.kind === "card" ? `/objects/${objectId}/tasks/${next.taskId}` : `/objects/${objectId}`);
+    }
+  };
+  useEffect(() => { setFormView(null); setFormError(""); }, [pathname]);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [assigneeId, setAssigneeId] = useState("");
@@ -66,23 +84,25 @@ export function TasksPanel({ objectId, isManager, onViewChange, onDataChange, on
       }).catch((error: unknown) => setExecutorError(errorMessage(error, "Не удалось загрузить список исполнителей.")))
         .finally(() => setExecutorsLoading(false));
     }
-  }, [objectId, isManager]);
+  }, [objectId, isManager, pathname]);
 
   const navigate = (next: TaskView) => {
     setView(next);
     setFormError("");
+  };
+
+  useLayoutEffect(() => {
     const returnToObject = () => {
       setView({ kind: "list" });
       setFormError("");
-      onViewChange({ kind: "list" });
       void refreshTasks();
     };
-    onViewChange(next.kind === "form"
-      ? { kind: "form", title: next.mode === "create" ? "Создание задачи" : "Редактирование задачи" }
-      : next.kind === "card" ? { kind: "card", onBack: returnToObject } : { kind: "list" });
-  };
+    onViewChange(view.kind === "form"
+      ? { kind: "form", title: view.mode === "create" ? "Создание задачи" : "Редактирование задачи" }
+      : view.kind === "card" ? { kind: "card", onBack: returnToObject } : { kind: "list" });
+  }, [view.kind, view.kind === "card" ? view.taskId : view.kind === "form" ? view.mode : "", onViewChange, objectId]);
 
-  const startCreate = useCallback(() => {
+  const startCreate = () => {
     setTitle("");
     setDescription("");
     setAssigneeId(executors[0]?.id ?? "");
@@ -91,12 +111,7 @@ export function TasksPanel({ objectId, isManager, onViewChange, onDataChange, on
     setTitleError("");
     setAssigneeError("");
     onViewChange({ kind: "form", title: "Создание задачи" });
-  }, [executors, onViewChange]);
-
-  useEffect(() => {
-    onCreateActionChange(isManager ? startCreate : null);
-    return () => onCreateActionChange(null);
-  }, [isManager, onCreateActionChange, startCreate]);
+  };
 
   const startEdit = (task: Pick<CrmTask, "id" | "title" | "description" | "assignee_id">) => {
     setTitle(task.title);
@@ -154,57 +169,60 @@ export function TasksPanel({ objectId, isManager, onViewChange, onDataChange, on
     setTasks((current) => current.map((task) => task.id === taskId ? { ...task, status } : task));
   };
 
+  const hasNoTasks = !loading && !loadError && tasks.length === 0;
+
   return (
     <section className={styles.section} aria-label="Задачи объекта">
       {view.kind === "list" ? <>
-        <div className={styles.heading}>
-          <h2>Задачи объекта</h2>
+        <div className={styles.taskHeading}>
+          <h2>Задачи <span className={styles.taskTotal}>{loading || loadError ? "—" : tasks.length}</span></h2>
+          {isManager && !hasNoTasks && <Button onClick={startCreate}>+ Создать задачу</Button>}
         </div>
         {formError && <p className={styles.error} role="alert">{formError}</p>}
         {loading ? <p className={styles.muted} role="status">Загружаем задачи…</p>
           : loadError ? <div className={styles.empty}><p role="alert">{loadError}</p><button className={styles.secondaryButton} type="button" onClick={() => void refreshTasks()}>Повторить</button></div>
-            : tasks.length === 0 ? <p className={styles.empty}>Для этого объекта пока нет задач.</p>
-              : <ul className={styles.list}>{tasks.map((task) => <li className={styles.task} key={task.id}>
-                <div className={styles.taskInfo}>
-                  <button className={styles.taskLink} type="button" onClick={() => navigate({ kind: "card", taskId: task.id })}>{task.title}</button>
-                  <TaskStatusBadge status={task.status} />
-                  <span className={styles.muted}>Исполнитель: {task.assignee?.display_name ?? "Не указан"}</span>
-                </div>
-              </li>)}</ul>}
+            : <DataTable
+              label="Задачи объекта"
+              headers={[{ label: "Название задачи" }, { label: "Исполнитель" }, { label: "Статус" }]}
+              columns="minmax(0, 1fr) minmax(140px, 240px) 150px 20px"
+              className={styles.taskTableLayout}
+              items={tasks}
+              href={(task) => `/objects/${objectId}/tasks/${task.id}`}
+              onNavigate={(task) => navigate({ kind: "card", taskId: task.id })}
+              emptyState={<EmptyState
+                icon={<TaskListIcon />}
+                title="Задач пока нет"
+                description="Создайте первую задачу для этого объекта"
+                action={isManager ? <Button onClick={startCreate}>+ Создать задачу</Button> : undefined}
+              />}
+              renderRow={(task) => <>
+                <strong className={styles.taskTitle}>{task.title}</strong>
+                <span className={styles.taskAssignee}><span className={styles.assigneeLabel}>Исполнитель: </span>{task.assignee?.display_name ?? "Не указан"}</span>
+                <span className={styles.taskStatus}><TaskStatusBadge status={task.status} /></span>
+              </>}
+            />}
       </> : view.kind === "card" ? <TaskDetails
         key={view.taskId}
         taskId={view.taskId}
+        objectId={objectId}
+        onBack={() => navigate({ kind: "list" })}
         isManager={isManager}
         onEdit={startEdit}
         onStatusChange={handleStatusChange}
         onDelete={handleDelete}
         onDataChange={onDataChange}
-      /> : <>
-      <form className={styles.form} noValidate onSubmit={handleSave}>
-          <label className={styles.field}>Название
-            <input value={title} onChange={(event) => { setTitle(event.target.value); setTitleError(""); }} required aria-invalid={Boolean(titleError)} aria-describedby={titleError ? "task-title-error" : undefined} disabled={saving} />
-            {titleError && <span id="task-title-error" className={styles.fieldError} role="alert">{titleError}</span>}
-          </label>
-          <label className={styles.field}>Описание
-            <textarea rows={3} value={description} onChange={(event) => setDescription(event.target.value)} disabled={saving} />
-          </label>
-          <label className={styles.field}>Исполнитель
-            <select value={assigneeId} onChange={(event) => { setAssigneeId(event.target.value); setAssigneeError(""); }} required aria-invalid={Boolean(assigneeError || executorError)} aria-describedby={[assigneeError && "task-assignee-error", executorError && "task-executor-error"].filter(Boolean).join(" ") || undefined} disabled={saving || executorsLoading || executors.length === 0}>
-              <option value="" disabled>Выберите исполнителя</option>
-              {executors.map((executor) => <option key={executor.id} value={executor.id}>{executor.display_name}</option>)}
-            </select>
-            {assigneeError && <span id="task-assignee-error" className={styles.fieldError} role="alert">{assigneeError}</span>}
-            {executorError && <span id="task-executor-error" className={styles.fieldError} role="alert">{executorError}</span>}
-          </label>
-          {executorsLoading && <p className={styles.muted} role="status">Загружаем исполнителей…</p>}
-          {!executorsLoading && !executorError && executors.length === 0 && <p className={styles.muted}>Нет доступных исполнителей.</p>}
-          {formError && <p className={styles.error} role="alert">{formError}</p>}
-          <div className={styles.actions}>
-            <button className={styles.primaryButton} type="submit" disabled={saving || executorsLoading || executors.length === 0}>{saving ? "Сохраняем…" : "Сохранить"}</button>
-            <button className={styles.secondaryButton} type="button" disabled={saving} onClick={() => navigate(view.mode === "create" ? { kind: "list" } : { kind: "card", taskId: view.task.id })}>Отмена</button>
-          </div>
-        </form>
-      </>}
+      /> : <TaskForm
+        mode={view.mode}
+        backHref={view.mode === "create" ? `/objects/${objectId}` : `/objects/${objectId}/tasks/${view.task.id}`}
+        title={title} description={description} assigneeId={assigneeId}
+        titleError={titleError} assigneeError={assigneeError} executorError={executorError}
+        executors={executors} executorsLoading={executorsLoading} error={formError} saving={saving}
+        onTitleChange={(value) => { setTitle(value); setTitleError(""); }}
+        onDescriptionChange={setDescription}
+        onAssigneeChange={(value) => { setAssigneeId(value); setAssigneeError(""); }}
+        onSubmit={handleSave}
+        onCancel={() => navigate(view.mode === "create" ? { kind: "list" } : { kind: "card", taskId: view.task.id })}
+      />}
     </section>
   );
 }

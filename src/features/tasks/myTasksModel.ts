@@ -32,3 +32,10 @@ export function groupTasksByObject(tasks: MyTask[]): MyTaskGroup[] {
 
   return [...groups.values()].sort((left, right) => left.name.localeCompare(right.name));
 }
+
+export function groupMyTasks(tasks: MyTask[]) {
+  return {
+    activeGroups: groupTasksByObject(tasks.filter((task) => task.status !== "accepted")),
+    acceptedGroups: groupTasksByObject(tasks.filter((task) => task.status === "accepted")),
+  };
+}

@@ -1,4 +1,11 @@
-import { useEffect, useRef, useState, type SubmitEvent } from "react";
+import { useEffect, useState, type SubmitEvent } from "react";
+import { Button } from "../../components/Button";
+import { ArrowLeftIcon, ClockIcon } from "../../components/Icons";
+import { Modal } from "../../components/Modal";
+import { TaskActions } from "../../components/TaskActions";
+import { FormField } from "../../components/forms/FormField";
+import { TextArea } from "../../components/forms/FormControls";
+import { navigate } from "../../app/navigation";
 import styles from "./TaskDetails.module.css";
 import { getTaskDetails, listTaskHistory, transitionTaskStatus, type TaskDetailsData, type TaskStatus, type TaskStatusEvent } from "./tasksApi";
 import { TaskStatusBadge } from "./TaskStatusBadge";
@@ -7,7 +14,11 @@ import { shouldShowEmptyHistory } from "./historyView";
 
 type Props = {
   taskId: string;
+  objectId?: string;
   isManager: boolean;
+  onBack?: () => void;
+  backHref?: string;
+  backLabel?: string;
   onEdit?: (task: TaskDetailsData) => void;
   onStatusChange: (taskId: string, status: TaskStatus) => void;
   onDelete?: (task: TaskDetailsData) => Promise<void>;
@@ -18,14 +29,14 @@ const actionNames: Partial<Record<TaskStatus, string>> = {
   in_progress: "Начать работу",
   in_review: "Отправить на проверку",
   accepted: "Принять задачу",
-  rework: "Вернуть на доработку",
+  rework: "Отправить на доработку",
 };
 
 function errorMessage(error: unknown, fallback: string) {
   return error instanceof Error && error.message ? `${fallback} ${error.message}` : fallback;
 }
 
-export function TaskDetails({ taskId, isManager, onEdit, onStatusChange, onDelete, onDataChange }: Props) {
+export function TaskDetails({ taskId, objectId, isManager, onBack, backHref: backHrefOverride, backLabel: backLabelOverride, onEdit, onStatusChange, onDelete, onDataChange }: Props) {
   const [task, setTask] = useState<TaskDetailsData | null>(null);
   const [history, setHistory] = useState<TaskStatusEvent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -37,7 +48,7 @@ export function TaskDetails({ taskId, isManager, onEdit, onStatusChange, onDelet
   const [historyError, setHistoryError] = useState("");
   const [comment, setComment] = useState("");
   const [saving, setSaving] = useState(false);
-  const commentRef = useRef<HTMLTextAreaElement>(null);
+  const [modal, setModal] = useState<"history" | "rework" | null>(null);
 
   const refreshHistory = async () => {
     setHistoryLoading(true);
@@ -89,35 +100,16 @@ export function TaskDetails({ taskId, isManager, onEdit, onStatusChange, onDelet
           : task.status === "rework" ? ["in_progress"] : []
     : [];
 
-  const handleTransition = async (event: SubmitEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const submitter = event.nativeEvent.submitter as HTMLButtonElement | null;
-    const newStatus = submitter?.value as TaskStatus | undefined;
-    if (!task || !newStatus || saving) return;
-
-    setStatusError("");
-    const cleanComment = comment.trim();
-    if (newStatus === "rework") {
-      const validationError = reworkCommentError(comment);
-      commentRef.current?.setCustomValidity(validationError ?? "");
-      if (!event.currentTarget.reportValidity()) {
-        setCommentError(validationError ?? "Проверьте комментарий.");
-        commentRef.current?.focus();
-        return;
-      }
-      setCommentError("");
-    } else {
-      commentRef.current?.setCustomValidity("");
-      setCommentError("");
-    }
-
+  const changeStatus = async (newStatus: TaskStatus, reworkComment: string | null = null) => {
+    if (!task || saving) return;
     setSaving(true);
     setStatusError("");
     try {
-      await transitionTaskStatus(task.id, newStatus, newStatus === "rework" ? cleanComment : null);
+      await transitionTaskStatus(task.id, newStatus, reworkComment);
       setTask((current) => current ? { ...current, status: newStatus } : current);
       onStatusChange(task.id, newStatus);
       setComment("");
+      if (newStatus === "rework") setModal(null);
       onDataChange();
       await refreshHistory();
     } catch (reason) {
@@ -125,6 +117,18 @@ export function TaskDetails({ taskId, isManager, onEdit, onStatusChange, onDelet
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleRework = (event: SubmitEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (saving) return;
+    const validationError = reworkCommentError(comment);
+    setCommentError(validationError ?? "");
+    if (validationError) {
+      event.currentTarget.querySelector<HTMLTextAreaElement>("textarea")?.focus();
+      return;
+    }
+    void changeStatus("rework", comment.trim());
   };
 
   const handleDelete = async () => {
@@ -140,63 +144,74 @@ export function TaskDetails({ taskId, isManager, onEdit, onStatusChange, onDelet
     }
   };
 
-  return (
-    <section className={styles.container} aria-label="Карточка задачи">
-      {loading ? <p role="status">Загружаем задачу…</p>
-        : error && !task ? <div className={styles.errorBox} role="alert"><p>{error}</p></div>
-          : task && <>
-            <header className={styles.header}>
-              <h1 id="task-details-title">Задача: {task.title}</h1>
-              <p className={styles.subtitle}>Постановщик: {task.author?.display_name ?? "Не указан"}</p>
-            </header>
+  const parentObjectId = task?.object_id ?? objectId;
+  const backHref = backHrefOverride ?? (parentObjectId ? `/objects/${parentObjectId}` : "/my-tasks");
+
+  return <section className={styles.container} aria-label="Карточка задачи">
+    <a className={styles.back} href={backHref} onClick={(event) => {
+      if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      event.preventDefault(); if (onBack) onBack(); else navigate(backHref);
+    }}><ArrowLeftIcon /><span>{backLabelOverride ?? (parentObjectId ? "К объекту" : "К моим задачам")}</span></a>
+    {loading ? <p role="status">Загружаем задачу…</p>
+      : error && !task ? <div className={styles.errorBox} role="alert"><p>{error}</p></div>
+        : task && <>
+          <header className={styles.header}>
+            <div className={styles.summary}>
+              <h1 id="task-details-title">{task.title}</h1>
+              <p>Исполнитель: {task.assignee?.display_name ?? "Не указан"}</p>
+            </div>
             {isManager && <div className={styles.recordActions}>
-              {onEdit && <button className={styles.secondaryButton} type="button" onClick={() => onEdit(task)}>Редактировать</button>}
-              {onDelete && <button className={styles.dangerButton} type="button" disabled={saving} onClick={() => void handleDelete()}>Удалить</button>}
+              {onEdit && <Button variant="outline" className={styles.recordButton} disabled={saving} onClick={() => onEdit(task)}>Редактировать</Button>}
+              {onDelete && <Button variant="danger-text" className={styles.recordButton} disabled={saving} onClick={() => void handleDelete()}>Удалить</Button>}
             </div>}
-            {recordError && <p className={styles.error} role="alert">{recordError}</p>}
-            <dl className={styles.details}>
-              <div><dt>Текущий статус</dt><dd><TaskStatusBadge status={task.status} /></dd></div>
-              <div><dt>Описание</dt><dd>{task.description || "—"}</dd></div>
-              <div><dt>Объект</dt><dd>{task.object?.name ?? "Недоступен"}{task.object?.address ? ` · ${task.object.address}` : ""}</dd></div>
-              <div><dt>Исполнитель</dt><dd>{task.assignee?.display_name ?? "Не указан"}</dd></div>
-              <div><dt>Создана</dt><dd>{new Date(task.created_at).toLocaleString()}</dd></div>
-            </dl>
-
-            {actions.length > 0 && <form className={styles.actionsSection} aria-label="Действия со статусом" noValidate onSubmit={handleTransition}>
-              {isManager && task.status === "in_review" && actions.includes("rework") && <label className={styles.field}>Комментарий для доработки
-                <textarea id="rework-comment" ref={commentRef} rows={3} value={comment} required aria-invalid={Boolean(commentError)} aria-describedby={commentError ? "rework-comment-error" : undefined} onChange={(event) => { setComment(event.target.value); setCommentError(""); event.currentTarget.setCustomValidity(""); }} disabled={saving} />
-                {commentError && <span id="rework-comment-error" className={styles.fieldError} role="alert">{commentError}</span>}
-              </label>}
-              {statusError && <p className={styles.error} role="alert">{statusError}</p>}
-              <div className={styles.actions}>
-                {actions.map((status) => <button
-                  className={status === "rework" ? styles.dangerButton : styles.primaryButton}
-                  key={status}
-                  type="submit"
-                  value={status}
-                  formNoValidate={status !== "rework"}
-                  disabled={saving}
-                >{saving ? "Сохраняем…" : status === "in_progress" && task.status === "rework" ? "Возобновить работу" : actionNames[status]}</button>)}
-              </div>
-            </form>}
-
-            <section className={styles.history} aria-labelledby="task-history-title">
-              <h3 id="task-history-title">История изменений</h3>
-              {historyError && <div className={styles.errorBox} role="alert"><p>{historyError}</p><button className={styles.secondaryButton} type="button" onClick={() => void refreshHistory()}>Повторить</button></div>}
-              {historyLoading ? <p role="status">Загружаем историю…</p>
-                : shouldShowEmptyHistory(historyLoading, Boolean(historyError), history.length) ? <p className={styles.muted}>История пока пуста.</p>
-                  : !historyError && <ol className={styles.events}>{history.map((event) => <li key={event.id}>
-                    <div className={styles.eventTop}>
-                      <time dateTime={event.created_at}>{new Date(event.created_at).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}</time>
-                      <TaskStatusBadge status={event.to_status} />
-                    </div>
-                    <div className={styles.eventBottom}>
-                      <strong title={event.actor?.display_name ?? "Пользователь"}>{event.actor?.display_name ?? "Пользователь"}</strong>
-                      {event.comment && <span className={styles.comment} title={event.comment}>{event.comment}</span>}
-                    </div>
-                  </li>)}</ol>}
-            </section>
-          </>}
-    </section>
-  );
+          </header>
+          <p className={styles.metadata}>Постановщик: {task.author?.display_name ?? "Не указан"} · Создана: {new Date(task.created_at).toLocaleString()}</p>
+          {recordError && <p className={styles.error} role="alert">{recordError}</p>}
+          <div className={styles.statusRow}>
+            <TaskStatusBadge status={task.status} />
+            <Button variant="outline" className={styles.historyButton} disabled={saving} onClick={() => { setModal("history"); void refreshHistory(); }}><ClockIcon />История статусов</Button>
+          </div>
+          <section className={styles.description} aria-labelledby="task-description-title">
+            <h2 id="task-description-title">Описание</h2>
+            <p>{task.description || "—"}</p>
+          </section>
+          {actions.length > 0 && <TaskActions>
+            {statusError && modal !== "rework" && <p className={styles.error} role="alert">{statusError}</p>}
+            <div className={styles.actions}>
+              {actions.map((status) => <Button key={status} variant={status === "rework" ? "danger" : "primary"} disabled={saving} onClick={() => {
+                if (status === "rework") { setComment(""); setCommentError(""); setStatusError(""); setModal("rework"); }
+                else void changeStatus(status);
+              }}>{saving ? "Сохраняем…" : status === "in_progress" && task.status === "rework" ? "Возобновить работу" : actionNames[status]}</Button>)}
+            </div>
+          </TaskActions>}
+        </>}
+    {modal === "history" && <Modal title="История статусов" onClose={() => setModal(null)}>
+      {historyError && <div className={styles.errorBox} role="alert"><p>{historyError}</p><Button variant="secondary" onClick={() => void refreshHistory()}>Повторить</Button></div>}
+      {historyLoading ? <p role="status">Загружаем историю…</p>
+        : shouldShowEmptyHistory(historyLoading, Boolean(historyError), history.length) ? <p className={styles.metadata}>История пока пуста.</p>
+          : !historyError && <ol className={styles.events} tabIndex={0}>{history.map((event) => <li key={event.id}>
+            <div className={styles.eventTop}>
+              <TaskStatusBadge status={event.to_status} />
+              <time dateTime={event.created_at}>{new Date(event.created_at).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}</time>
+            </div>
+            <strong>{event.actor?.display_name ?? "Пользователь"}</strong>
+            {event.comment && <p className={styles.comment}>{event.comment}</p>}
+          </li>)}</ol>}
+    </Modal>}
+    {modal === "rework" && <Modal title="Вернуть на доработку" onClose={() => setModal(null)} closeDisabled={saving}>
+      <form className={styles.reworkForm} aria-label="Возврат на доработку" noValidate onSubmit={handleRework}>
+        <p className={styles.metadata}>Укажите, что нужно исправить. Комментарий обязателен и сохранится в истории статусов.</p>
+        <FormField id="rework-comment" label="Комментарий" error={commentError}>
+          <TextArea id="rework-comment" autoFocus rows={4} value={comment} required disabled={saving}
+            aria-invalid={Boolean(commentError)} aria-describedby={commentError ? "rework-comment-error" : undefined}
+            onChange={(event) => { setComment(event.target.value); setCommentError(""); }} />
+        </FormField>
+        {statusError && <p className={styles.error} role="alert">{statusError}</p>}
+        <div className={styles.modalActions}>
+          <Button variant="secondary" disabled={saving} onClick={() => setModal(null)}>Отмена</Button>
+          <Button type="submit" disabled={saving}>{saving ? "Сохраняем…" : "На доработку"}</Button>
+        </div>
+      </form>
+    </Modal>}
+  </section>;
 }

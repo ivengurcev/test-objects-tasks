@@ -1,0 +1,13 @@
+.page { width: 100%; max-width: 760px; min-width: 0; }
+.back { display: inline-flex; align-items: center; gap: var(--space-sm); min-height: 42px; color: var(--color-text-muted); font-size: var(--font-size-label); text-decoration: none; }
+.back svg { flex-shrink: 0; }
+.back:hover { color: var(--color-primary); text-decoration: underline; }
+.back:focus-visible { outline: 3px solid var(--color-focus-ring); outline-offset: 2px; }
+.back[aria-disabled="true"] { opacity: .65; cursor: wait; }
+.page h1 { margin: var(--space-lg) 0 var(--space-xl); font-size: 30px; line-height: 1.2; letter-spacing: -.035em; overflow-wrap: anywhere; }
+.panel { display: grid; gap: var(--space-xl); margin: 0; padding: var(--space-2xl); border: 1px solid var(--color-border); border-radius: var(--radius-panel); background: var(--color-surface); }
+.error { margin: 0; color: var(--color-danger); font-size: var(--font-size-label); line-height: var(--line-height-body); overflow-wrap: anywhere; }
+.status { margin: 0; color: var(--color-text-muted); font-size: var(--font-size-label); line-height: var(--line-height-body); }
+@media (max-width: 560px) {
+  .panel { padding: var(--space-panel); }
+}

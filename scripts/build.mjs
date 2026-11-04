@@ -35,6 +35,7 @@ async function main() {
   await context.watch();
   const server = await context.serve({
     servedir: "dist",
+    fallback: "dist/index.html",
     host: "127.0.0.1",
     port: 3000,
   });

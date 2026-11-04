@@ -1,0 +1,5 @@
+.control { width: 100%; min-width: 0; min-height: 44px; padding: 10px var(--space-md); border: 1px solid var(--color-input-border); border-radius: var(--radius-control); background: var(--color-surface); color: var(--color-text); font: inherit; line-height: var(--line-height-body); }
+textarea.control { resize: vertical; }
+.control:focus { border-color: var(--color-focus); outline: 3px solid var(--color-focus-ring); }
+.control[aria-invalid="true"] { border-color: var(--color-danger); }
+.control:disabled { background: var(--color-surface-subtle); color: var(--color-text-muted); cursor: not-allowed; }

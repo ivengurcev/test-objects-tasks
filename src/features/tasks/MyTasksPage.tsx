@@ -1,18 +1,21 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { navigate, usePathname } from "../../app/navigation";
+import { getPathForRole, parseRoute } from "../../app/routes";
+import { Button } from "../../components/Button";
+import { DataTable } from "../../components/DataTable";
+import { EmptyState } from "../../components/EmptyState";
+import { TaskListIcon } from "../../components/Icons";
 import type { Profile } from "../objects/types";
 import { TaskDetails } from "./TaskDetails";
 import { TaskStatusBadge } from "./TaskStatusBadge";
-import { groupTasksByObject, type MyTask } from "./myTasksModel";
+import { groupMyTasks, type MyTask, type MyTaskGroup } from "./myTasksModel";
 import { listMyTasks, type TaskStatus } from "./tasksApi";
 import styles from "./MyTasksPage.module.css";
 
 type Props = {
   profile: Profile;
-  onSignOut: () => void;
   signOutError: string;
 };
-
-type View = { kind: "list" } | { kind: "task"; taskId: string };
 
 function errorMessage(error: unknown) {
   return error instanceof Error && error.message
@@ -20,12 +23,39 @@ function errorMessage(error: unknown) {
     : "Не удалось загрузить задачи. Проверьте подключение и попробуйте ещё раз.";
 }
 
-export function MyTasksPage({ profile, onSignOut, signOutError }: Props) {
+function TaskGroups({ groups, accepted = false }: { groups: MyTaskGroup[]; accepted?: boolean }) {
+  return <div className={styles.groups}>{groups.map((group) => <section key={group.objectId} aria-label={`Объект ${group.name}`}>
+    <header className={styles.groupHeader}>
+      <div className={styles.objectInfo}><h2>{group.name}</h2><p>{group.address}</p></div>
+      <span className={styles.groupCount}>{accepted ? "Принятых задач" : "Активных задач"}: {group.tasks.length}</span>
+    </header>
+    <DataTable
+      label={`${accepted ? "Принятые" : "Активные"} задачи объекта ${group.name}`}
+      headers={[{ label: "Название задачи" }, { label: "Статус" }]}
+      columns="minmax(0, 1fr) 160px 20px"
+      className={styles.taskTableLayout}
+      items={group.tasks}
+      href={(task) => `/my-tasks/${task.id}`}
+      onNavigate={(task) => navigate(`/my-tasks/${task.id}`)}
+      emptyState={<EmptyState title="Задач пока нет" />}
+      renderRow={(task) => <>
+        <strong className={styles.taskTitle}>{task.title}</strong>
+        <span className={styles.taskStatus}><TaskStatusBadge status={task.status} /></span>
+      </>}
+    />
+  </section>)}</div>;
+}
+
+export function MyTasksPage({ profile, signOutError }: Props) {
   const [tasks, setTasks] = useState<MyTask[]>([]);
-  const [view, setView] = useState<View>({ kind: "list" });
+  const pathname = usePathname();
+  const route = parseRoute(getPathForRole(profile.role, pathname));
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
-  const groups = useMemo(() => groupTasksByObject(tasks), [tasks]);
+  const [acceptedExpanded, setAcceptedExpanded] = useState(false);
+  const { activeGroups, acceptedGroups } = useMemo(() => groupMyTasks(tasks), [tasks]);
+  const activeCount = activeGroups.reduce((total, group) => total + group.tasks.length, 0);
+  const acceptedCount = acceptedGroups.reduce((total, group) => total + group.tasks.length, 0);
 
   const refreshTasks = useCallback(async () => {
     setLoading(true);
@@ -41,57 +71,40 @@ export function MyTasksPage({ profile, onSignOut, signOutError }: Props) {
 
   useEffect(() => {
     void refreshTasks();
-  }, [refreshTasks]);
+  }, [refreshTasks, pathname]);
 
   const handleStatusChange = (taskId: string, status: TaskStatus) => {
     setTasks((current) => current.map((task) => task.id === taskId ? { ...task, status } : task));
   };
 
-  const backToList = () => {
-    setView({ kind: "list" });
-    void refreshTasks();
-  };
-
-  return (
-    <section className={styles.container} aria-label="Мои задачи">
-      <div className={styles.utilityBar}>
-        <span>Мини-CRM · строительство</span>
-        <span>{profile.display_name} · Исполнитель</span>
-      </div>
-      <nav className={styles.navigation} aria-label="Навигация приложения">
-        <div>
-          {view.kind === "task" && <button className={styles.backButton} type="button" onClick={backToList}>← Назад к моим задачам</button>}
-        </div>
-        <button className={styles.secondaryButton} type="button" onClick={onSignOut}>Выйти</button>
-      </nav>
-      {signOutError && <p className={styles.error} role="alert">{signOutError}</p>}
-
-      {view.kind === "list" ? <>
-        <header className={styles.sectionHeader}><h1>Мои задачи</h1></header>
-        {loading ? <p className={styles.muted} role="status">Загружаем задачи…</p>
-          : loadError ? <div className={styles.notice}>
-            <p role="alert">{loadError}</p>
-            <button className={styles.secondaryButton} type="button" onClick={() => void refreshTasks()}>Повторить</button>
-          </div>
-            : groups.length === 0 ? <p className={styles.notice}>У вас пока нет активных задач.</p>
-              : <div className={styles.groups}>{groups.map((group) => <section className={styles.group} key={group.objectId}>
-                <header className={styles.groupHeader}>
-                  <h2>{group.name}</h2>
-                  <p>{group.address}</p>
-                </header>
-                <ul className={styles.taskList}>{group.tasks.map((task) => <li key={task.id}>
-                  <button className={styles.taskLink} type="button" onClick={() => setView({ kind: "task", taskId: task.id })}>
-                    <span>{task.title}</span><TaskStatusBadge status={task.status} />
-                  </button>
-                </li>)}</ul>
-              </section>)}</div>}
-      </> : <TaskDetails
-        key={view.taskId}
-        taskId={view.taskId}
-        isManager={false}
-        onStatusChange={handleStatusChange}
-        onDataChange={() => void refreshTasks()}
-      />}
-    </section>
-  );
+  return <section className={styles.page} aria-label="Мои задачи">
+    {signOutError && <p className={styles.error} role="alert">{signOutError}</p>}
+    {route.kind === "my-task" ? <TaskDetails
+      key={route.taskId}
+      taskId={route.taskId}
+      isManager={false}
+      backHref="/my-tasks"
+      backLabel="К моим задачам"
+      onBack={() => navigate("/my-tasks")}
+      onStatusChange={handleStatusChange}
+      onDataChange={() => void refreshTasks()}
+    /> : <>
+      <header className={styles.pageHeader}>
+        <h1>Мои задачи</h1>
+        <p>{loading ? "Загружаем задачи…" : loadError ? "Количество задач недоступно" : `Активных задач: ${activeCount} · Объектов: ${activeGroups.length}`}</p>
+      </header>
+      {loading ? <p className={styles.muted} role="status">Загружаем задачи…</p>
+        : loadError ? <div className={styles.empty} role="alert"><EmptyState title="Не удалось загрузить задачи" description={loadError}
+          action={<Button variant="secondary" onClick={() => void refreshTasks()}>Повторить</Button>} /></div>
+          : <>
+            {activeCount === 0 ? <div className={styles.empty}><EmptyState icon={<TaskListIcon />} title="Активных задач нет" /></div>
+              : <TaskGroups groups={activeGroups} />}
+            {acceptedCount > 0 && <section className={styles.accepted} aria-label="Принятые задачи">
+              <Button variant="secondary" aria-expanded={acceptedExpanded} aria-controls="accepted-tasks"
+                onClick={() => setAcceptedExpanded((expanded) => !expanded)}>Принятые задачи ({acceptedCount})</Button>
+              {acceptedExpanded && <div id="accepted-tasks" className={styles.acceptedGroups}><TaskGroups groups={acceptedGroups} accepted /></div>}
+            </section>}
+          </>}
+    </>}
+  </section>;
 }

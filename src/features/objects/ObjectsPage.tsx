@@ -1,12 +1,18 @@
-import { useCallback, useEffect, useState, type SubmitEvent } from "react";
+import { useEffect, useState, type SubmitEvent } from "react";
+import { Button } from "../../components/Button";
+import { DataTable } from "../../components/DataTable";
+import { EmptyState } from "../../components/EmptyState";
+import { ArrowLeftIcon } from "../../components/Icons";
+import { ObjectForm } from "./ObjectForm";
 import type { Profile } from "./types";
 import styles from "./ObjectsPage.module.css";
 import { createObject, deleteObject, listActiveTaskStatuses, listObjects, updateObject, type CrmObject } from "./objectsApi";
+import { navigate, usePathname } from "../../app/navigation";
+import { parseRoute } from "../../app/routes";
 import { TasksPanel, type TaskPanelView } from "../tasks/TasksPanel";
 
 type Props = {
   profile: Profile;
-  onSignOut: () => void;
   signOutError: string;
 };
 
@@ -22,12 +28,25 @@ function errorMessage(error: unknown, fallback: string) {
   return error instanceof Error && error.message ? `${fallback} ${error.message}` : fallback;
 }
 
-export function ObjectsPage({ profile, onSignOut, signOutError }: Props) {
+export function ObjectsPage({ profile, signOutError }: Props) {
   const isManager = profile.role === "manager";
   const [objects, setObjects] = useState<CrmObject[]>([]);
-  const [view, setView] = useState<View>({ kind: "list" });
+  const pathname = usePathname();
+  const route = parseRoute(pathname);
+  const objectId = route.kind === "object" || route.kind === "task" ? route.objectId : null;
+  const selectedObject = objects.find((object) => object.id === objectId);
+  const [formView, setFormView] = useState<{ path: string; view: View } | null>(null);
+  const view: View = formView?.path === pathname ? formView.view
+    : selectedObject ? { kind: "object", object: selectedObject } : { kind: "list" };
+  const setView = (next: View) => {
+    if (next.kind === "object-form") setFormView({ path: pathname, view: next });
+    else {
+      setFormView(null);
+      navigate(next.kind === "object" ? `/objects/${next.object.id}` : "/objects");
+    }
+  };
+  useEffect(() => { setFormView(null); setFormError(""); }, [pathname]);
   const [taskView, setTaskView] = useState<TaskPanelView>({ kind: "list" });
-  const [createTaskAction, setCreateTaskAction] = useState<(() => void) | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [taskCounts, setTaskCounts] = useState<TaskCounts>({});
@@ -75,14 +94,10 @@ export function ObjectsPage({ profile, onSignOut, signOutError }: Props) {
     }
   };
 
-  const registerCreateTaskAction = useCallback((action: (() => void) | null) => {
-    setCreateTaskAction(() => action);
-  }, []);
-
   useEffect(() => {
     void refreshObjects();
     void refreshTaskCounts();
-  }, []);
+  }, [pathname]);
 
   const openObject = (object: CrmObject) => {
     setTaskView({ kind: "list" });
@@ -114,8 +129,8 @@ export function ObjectsPage({ profile, onSignOut, signOutError }: Props) {
     setNameError("");
     setAddressError("");
     setTaskView({ kind: "list" });
-    setView((current) => current.kind === "object-form" && current.mode === "edit"
-      ? { kind: "object", object: current.object }
+    setView(view.kind === "object-form" && view.mode === "edit"
+      ? { kind: "object", object: view.object }
       : { kind: "list" });
   };
 
@@ -170,84 +185,80 @@ export function ObjectsPage({ profile, onSignOut, signOutError }: Props) {
   };
 
   const isFormScreen = view.kind === "object-form" || (view.kind === "object" && taskView.kind === "form");
+  const isObjectScreen = view.kind === "object" && taskView.kind === "list";
   const showObjectError = view.kind === "object" && taskView.kind === "list";
-  const formTitle = view.kind === "object-form"
-    ? view.mode === "create" ? "Создание объекта" : "Редактирование объекта"
-    : view.kind === "object" && taskView.kind === "form" ? taskView.title : "";
 
   return (
-    <section className={styles.container} aria-label="Мини-CRM">
-      <div className={`${styles.utilityBar} ${isFormScreen ? styles.utilityBarForm : ""}`}>
-        <span>Мини-CRM · строительство</span>
-        <span>{profile.display_name} · {isManager ? "Постановщик" : "Исполнитель"}</span>
-      </div>
-      {!isFormScreen && <nav className={styles.navigation} aria-label="Навигация приложения">
+    <section className={isFormScreen ? styles.formContainer : (isObjectScreen || (view.kind === "object" && taskView.kind === "card")) ? styles.objectPage : view.kind === "list" && !objectId ? styles.listContainer : styles.container} aria-label="Мини-CRM">
+      {isObjectScreen && <nav className={styles.navigation} aria-label="Навигация приложения">
         <div>
-          {view.kind === "object" && taskView.kind === "list" && <button className={styles.backButton} type="button" onClick={() => { setView({ kind: "list" }); setTaskView({ kind: "list" }); setFormError(""); void refreshObjects(); void refreshTaskCounts(); }}>← Назад к списку объектов</button>}
-          {view.kind === "object" && taskView.kind === "card" && <button className={styles.backButton} type="button" onClick={taskView.onBack}>← Назад к объекту</button>}
+          {isObjectScreen && <a className={styles.objectBackLink} href="/objects" onClick={(event) => {
+            if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+            event.preventDefault(); setView({ kind: "list" }); setTaskView({ kind: "list" }); setFormError("");
+          }}><ArrowLeftIcon /><span>К списку объектов</span></a>}
         </div>
-        <button className={styles.secondaryButton} type="button" onClick={onSignOut}>Выйти</button>
       </nav>}
-      {!isFormScreen && signOutError && <p className={styles.error} role="alert">{signOutError}</p>}
-      {isFormScreen && <header className={styles.sectionHeader}><h1>{formTitle}</h1></header>}
+      {signOutError && <p className={styles.error} role="alert">{signOutError}</p>}
       {showObjectError && formError && <p className={styles.error} role="alert">{formError}</p>}
 
-      {view.kind === "list" ? <>
-        <header className={styles.sectionHeader}><h1>Объекты</h1></header>
-        <div className={styles.listHeading}>
-          <p className={styles.muted}>Активные объекты</p>
-          {isManager && <button className={styles.primaryButton} type="button" onClick={startCreate}>Создать объект</button>}
-        </div>
+      {objectId && !selectedObject ? <>
+        <button className={styles.backButton} type="button" onClick={() => navigate(isManager ? "/objects" : "/my-tasks")}>← Назад</button>
+        {loading ? <p role="status">Загружаем объект…</p> : <div className={styles.empty}>
+          <p role="alert">{loadError || "Объект недоступен, удалён или не найден."}</p>
+          {loadError && <button className={styles.secondaryButton} onClick={() => void refreshObjects()}>Повторить</button>}
+        </div>}
+      </> : view.kind === "list" ? <>
+        <header className={styles.listHeading}>
+          <div><h1>Объекты</h1><p className={styles.muted}>{loading ? "Загружаем…" : loadError ? "Количество недоступно" : `Активных объектов: ${objects.length}`}</p></div>
+          {isManager && <Button onClick={startCreate}>+ Создать объект</Button>}
+        </header>
         {loading ? <p role="status">Загружаем объекты…</p>
           : loadError ? <div className={styles.empty}><p role="alert">{loadError}</p><button className={styles.secondaryButton} type="button" onClick={() => void refreshObjects()}>Повторить</button></div>
-            : objects.length === 0 ? <p className={styles.empty}>Пока нет доступных объектов.</p>
-              : <ul className={styles.objectList}>{objects.map((object) => <li key={object.id}>
-                <button className={styles.objectLink} type="button" onClick={() => openObject(object)}>
-                  <strong>{object.name}</strong><span className={styles.objectAddress}>{object.address}</span>
-                  <span className={countsLoading ? styles.countState : countsError ? styles.countError : styles.counts}>
-                    {countsLoading ? "Обновляем счётчики…" : countsError ? "Счётчики недоступны" : <>
-                      <span className={styles.reviewCount}>На проверке: {taskCounts[object.id]?.review ?? 0}</span>
-                      <span>Выполнено: {taskCounts[object.id]?.completed ?? 0}</span>
-                      <span>Незакрыто: {taskCounts[object.id]?.open ?? 0}</span>
-                    </>}
-                  </span>
-                </button>
-              </li>)}</ul>}
-      </> : view.kind === "object-form" ? <form className={styles.form} noValidate onSubmit={handleSaveObject}>
-        <label className={styles.field}>Название
-          <input value={name} onChange={(event) => { setName(event.target.value); setNameError(""); }} required aria-invalid={Boolean(nameError)} aria-describedby={nameError ? "object-name-error" : undefined} disabled={saving} />
-          {nameError && <span id="object-name-error" className={styles.fieldError} role="alert">{nameError}</span>}
-        </label>
-        <label className={styles.field}>Адрес
-          <input value={address} onChange={(event) => { setAddress(event.target.value); setAddressError(""); }} required aria-invalid={Boolean(addressError)} aria-describedby={addressError ? "object-address-error" : undefined} disabled={saving} />
-          {addressError && <span id="object-address-error" className={styles.fieldError} role="alert">{addressError}</span>}
-        </label>
-        {formError && <p className={styles.error} role="alert">{formError}</p>}
-        <div className={styles.actions}>
-          <button className={styles.primaryButton} type="submit" disabled={saving}>{saving ? "Сохраняем…" : "Сохранить"}</button>
-          <button className={styles.secondaryButton} type="button" onClick={cancelObjectForm} disabled={saving}>Отмена</button>
-        </div>
-      </form> : <>
-        {taskView.kind === "list" && <>
-          <header className={styles.sectionHeader}><h1>Объект: {view.object.name}</h1></header>
-          {isManager && <div className={styles.actions}>
-            {createTaskAction && <button className={styles.primaryButton} type="button" onClick={createTaskAction}>Создать задачу</button>}
-            <button className={styles.primaryButton} type="button" onClick={() => startEdit(view.object)}>Редактировать</button>
-            <button className={styles.dangerButton} type="button" disabled={saving} onClick={() => void handleDeleteObject(view.object)}>Удалить</button>
-          </div>}
-          <div className={styles.detail}>
-            <div><span className={styles.label}>Название</span><p>{view.object.name}</p></div>
-            <div><span className={styles.label}>Адрес</span><p>{view.object.address}</p></div>
+            : <DataTable
+              label="Объекты"
+              headers={[{ label: "Объект" }, { label: "На проверке", align: "center" }, { label: "Выполнено", align: "center" }, { label: "Открыто", align: "center" }]}
+              columns="minmax(0, 1fr) repeat(3, 130px) 28px"
+              className={styles.objectTableLayout}
+              items={objects}
+              href={(object) => `/objects/${object.id}`}
+              onNavigate={openObject}
+              emptyState={<EmptyState title="Пока нет доступных объектов." />}
+              notice={(countsLoading || countsError) && <p className={countsError ? styles.countError : styles.countState} role="status">{countsLoading ? "Обновляем счётчики…" : "Счётчики недоступны"}</p>}
+              renderRow={(object) => <>
+                <span className={styles.objectInfo}><strong>{object.name}</strong><span className={styles.objectAddress}>{object.address}</span></span>
+                <span className={styles.counts}>
+                  <span className={(taskCounts[object.id]?.review ?? 0) > 0 ? styles.reviewCount : styles.emptyCount}><span className={styles.mobileLabel}>На проверке: </span><span>{countsLoading || countsError ? "—" : taskCounts[object.id]?.review ?? 0}</span></span>
+                  <span className={(taskCounts[object.id]?.completed ?? 0) > 0 ? styles.completedCount : styles.emptyCount}><span className={styles.mobileLabel}>Выполнено: </span><span>{countsLoading || countsError ? "—" : taskCounts[object.id]?.completed ?? 0}</span></span>
+                  <span className={(taskCounts[object.id]?.open ?? 0) > 0 ? styles.openCount : styles.emptyCount}><span className={styles.mobileLabel}>Открыто: </span><span>{countsLoading || countsError ? "—" : taskCounts[object.id]?.open ?? 0}</span></span>
+                </span>
+              </>}
+            />}
+      </> : view.kind === "object-form" ? <ObjectForm
+        mode={view.mode}
+        backHref={view.mode === "edit" ? `/objects/${view.object.id}` : "/objects"}
+        name={name} address={address} nameError={nameError} addressError={addressError}
+        error={formError} saving={saving}
+        onNameChange={(value) => { setName(value); setNameError(""); }}
+        onAddressChange={(value) => { setAddress(value); setAddressError(""); }}
+        onSubmit={handleSaveObject} onCancel={cancelObjectForm}
+      /> : <>
+        {taskView.kind === "list" && <header className={styles.objectHeader}>
+          <div className={styles.objectSummary}>
+            <h1>{view.object.name}</h1>
+            <p>{view.object.address}</p>
           </div>
-        </>}
-        {view.kind === "object" && <div className={styles.tasks}>
+          {isManager && <div className={styles.objectActions}>
+            <button className={styles.editObjectButton} type="button" onClick={() => startEdit(view.object)}>Редактировать</button>
+            <button className={styles.deleteObjectButton} type="button" disabled={saving} onClick={() => void handleDeleteObject(view.object)}>Удалить</button>
+          </div>}
+        </header>}
+        {view.kind === "object" && <div className={taskView.kind === "list" ? styles.objectTasks : undefined}>
           <TasksPanel
             key={view.object.id}
             objectId={view.object.id}
             isManager={isManager}
             onViewChange={setTaskView}
             onDataChange={() => void refreshTaskCounts()}
-            onCreateActionChange={registerCreateTaskAction}
           />
         </div>}
       </>}
