@@ -39,3 +39,24 @@ export function groupMyTasks(tasks: MyTask[]) {
     acceptedGroups: groupTasksByObject(tasks.filter((task) => task.status === "accepted")),
   };
 }
+
+type MyTasksState = { tasks: MyTask[] | null; error: string; requestId: number };
+type MyTasksUpdate =
+  | { type: "request"; requestId: number }
+  | { type: "success"; requestId: number; tasks: MyTask[] }
+  | { type: "failure"; requestId: number; error: string }
+  | { type: "status"; requestId: number; taskId: string; status: TaskStatus };
+
+export const initialMyTasksState: MyTasksState = { tasks: null, error: "", requestId: 0 };
+
+export function myTasksReducer(state: MyTasksState, update: MyTasksUpdate): MyTasksState {
+  if (update.type === "request") return { ...state, error: "", requestId: update.requestId };
+  if (update.type === "status") return {
+    ...state,
+    requestId: update.requestId,
+    tasks: state.tasks?.map((task) => task.id === update.taskId ? { ...task, status: update.status } : task) ?? null,
+  };
+  if (update.requestId !== state.requestId) return state;
+  if (update.type === "success") return { ...state, tasks: update.tasks, error: "" };
+  return { ...state, error: update.error };
+}

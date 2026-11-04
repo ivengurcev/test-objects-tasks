@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { navigate, usePathname } from "../../app/navigation";
 import { getPathForRole, parseRoute } from "../../app/routes";
 import { Button } from "../../components/Button";
@@ -8,7 +8,7 @@ import { TaskListIcon } from "../../components/Icons";
 import type { Profile } from "../objects/types";
 import { TaskDetails } from "./TaskDetails";
 import { TaskStatusBadge } from "./TaskStatusBadge";
-import { groupMyTasks, type MyTask, type MyTaskGroup } from "./myTasksModel";
+import { groupMyTasks, initialMyTasksState, myTasksReducer, type MyTaskGroup } from "./myTasksModel";
 import { listMyTasks, type TaskStatus } from "./tasksApi";
 import styles from "./MyTasksPage.module.css";
 
@@ -47,34 +47,33 @@ function TaskGroups({ groups, accepted = false }: { groups: MyTaskGroup[]; accep
 }
 
 export function MyTasksPage({ profile, signOutError }: Props) {
-  const [tasks, setTasks] = useState<MyTask[]>([]);
+  const [{ tasks, error: loadError }, dispatch] = useReducer(myTasksReducer, initialMyTasksState);
+  const latestRequest = useRef(0);
   const pathname = usePathname();
   const route = parseRoute(getPathForRole(profile.role, pathname));
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState("");
+  const isTaskView = route.kind === "my-task";
+  const loading = tasks === null && !loadError;
   const [acceptedExpanded, setAcceptedExpanded] = useState(false);
-  const { activeGroups, acceptedGroups } = useMemo(() => groupMyTasks(tasks), [tasks]);
+  const { activeGroups, acceptedGroups } = useMemo(() => groupMyTasks(tasks ?? []), [tasks]);
   const activeCount = activeGroups.reduce((total, group) => total + group.tasks.length, 0);
   const acceptedCount = acceptedGroups.reduce((total, group) => total + group.tasks.length, 0);
 
   const refreshTasks = useCallback(async () => {
-    setLoading(true);
-    setLoadError("");
+    const requestId = ++latestRequest.current;
+    dispatch({ type: "request", requestId });
     try {
-      setTasks(await listMyTasks(profile.id));
+      dispatch({ type: "success", requestId, tasks: await listMyTasks(profile.id) });
     } catch (error) {
-      setLoadError(errorMessage(error));
-    } finally {
-      setLoading(false);
+      dispatch({ type: "failure", requestId, error: errorMessage(error) });
     }
   }, [profile.id]);
 
   useEffect(() => {
-    void refreshTasks();
-  }, [refreshTasks, pathname]);
+    if (!isTaskView) void refreshTasks();
+  }, [refreshTasks, isTaskView]);
 
   const handleStatusChange = (taskId: string, status: TaskStatus) => {
-    setTasks((current) => current.map((task) => task.id === taskId ? { ...task, status } : task));
+    dispatch({ type: "status", requestId: ++latestRequest.current, taskId, status });
   };
 
   return <section className={styles.page} aria-label="Мои задачи">
@@ -91,18 +90,21 @@ export function MyTasksPage({ profile, signOutError }: Props) {
     /> : <>
       <header className={styles.pageHeader}>
         <h1>Мои задачи</h1>
-        <p>{loading ? "Загружаем задачи…" : loadError ? "Количество задач недоступно" : `Активных задач: ${activeCount} · Объектов: ${activeGroups.length}`}</p>
+        <p>{loading ? "Загружаем задачи…" : tasks === null && loadError ? "Количество задач недоступно" : `Активных задач: ${activeCount} · Объектов: ${activeGroups.length}`}</p>
       </header>
       {loading ? <p className={styles.muted} role="status">Загружаем задачи…</p>
-        : loadError ? <div className={styles.empty} role="alert"><EmptyState title="Не удалось загрузить задачи" description={loadError}
+        : tasks === null && loadError ? <div className={styles.empty} role="alert"><EmptyState title="Не удалось загрузить задачи" description={loadError}
           action={<Button variant="secondary" onClick={() => void refreshTasks()}>Повторить</Button>} /></div>
           : <>
+            {loadError && <div className={styles.refreshError} role="alert">
+              <p>{loadError}</p><Button variant="secondary" onClick={() => void refreshTasks()}>Повторить</Button>
+            </div>}
             {activeCount === 0 ? <div className={styles.empty}><EmptyState icon={<TaskListIcon />} title="Активных задач нет" /></div>
               : <TaskGroups groups={activeGroups} />}
             {acceptedCount > 0 && <section className={styles.accepted} aria-label="Принятые задачи">
               <Button variant="secondary" aria-expanded={acceptedExpanded} aria-controls="accepted-tasks"
                 onClick={() => setAcceptedExpanded((expanded) => !expanded)}>Принятые задачи ({acceptedCount})</Button>
-              {acceptedExpanded && <div id="accepted-tasks" className={styles.acceptedGroups}><TaskGroups groups={acceptedGroups} accepted /></div>}
+              <div id="accepted-tasks" className={styles.acceptedGroups} hidden={!acceptedExpanded}><TaskGroups groups={acceptedGroups} accepted /></div>
             </section>}
           </>}
     </>}

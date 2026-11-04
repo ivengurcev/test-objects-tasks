@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { groupTasksByObject, groupMyTasks } from "./myTasksModel.ts";
+import { groupTasksByObject, groupMyTasks, initialMyTasksState, myTasksReducer } from "./myTasksModel.ts";
 
 test("groups assigned tasks under their objects and omits empty objects", () => {
   const groups = groupTasksByObject([
@@ -46,4 +46,51 @@ test("keeps accepted-only objects available when there are no active tasks", () 
   assert.equal(acceptedGroups.length, 1);
   assert.equal(acceptedGroups[0].tasks.length, 1);
   assert.deepEqual(groupMyTasks([]), { activeGroups: [], acceptedGroups: [] });
+});
+
+
+const cachedTask = { id: "task", title: "Работа", status: "new", object_id: "o-1", object: { id: "o-1", name: "Дом", address: "Адрес" } };
+
+test("distinguishes first load from background refresh with cached tasks", () => {
+  assert.equal(initialMyTasksState.tasks, null);
+  const requested = myTasksReducer(initialMyTasksState, { type: "request", requestId: 1 });
+  const tasks = [cachedTask];
+  const loaded = myTasksReducer(requested, { type: "success", requestId: 1, tasks });
+  const refreshing = myTasksReducer(loaded, { type: "request", requestId: 2 });
+  assert.equal(refreshing.tasks, tasks);
+  assert.equal(refreshing.error, "");
+});
+
+test("background failure keeps even an empty successful result and retry replaces it", () => {
+  const loaded = myTasksReducer({ ...initialMyTasksState, requestId: 1 }, { type: "success", requestId: 1, tasks: [] });
+  const refreshing = myTasksReducer(loaded, { type: "request", requestId: 2 });
+  const failed = myTasksReducer(refreshing, { type: "failure", requestId: 2, error: "Offline" });
+  assert.deepEqual(failed.tasks, []);
+  assert.equal(failed.error, "Offline");
+  const retry = myTasksReducer(failed, { type: "request", requestId: 3 });
+  assert.equal(retry.tasks, failed.tasks);
+  assert.equal(retry.error, "");
+  const recovered = myTasksReducer(retry, { type: "success", requestId: 3, tasks: [cachedTask] });
+  assert.deepEqual(recovered.tasks, [cachedTask]);
+});
+
+test("ignores older successes and errors after a newer request", () => {
+  const first = myTasksReducer(initialMyTasksState, { type: "request", requestId: 1 });
+  const second = myTasksReducer(first, { type: "request", requestId: 2 });
+  const fresh = myTasksReducer(second, { type: "success", requestId: 2, tasks: [cachedTask] });
+  assert.equal(myTasksReducer(fresh, { type: "success", requestId: 1, tasks: [] }), fresh);
+  assert.equal(myTasksReducer(fresh, { type: "failure", requestId: 1, error: "Stale failure" }), fresh);
+});
+
+test("optimistic status invalidates a pending read before server synchronization", () => {
+  const loading = { tasks: [cachedTask], error: "", requestId: 1 };
+  const changed = myTasksReducer(loading, { type: "status", requestId: 2, taskId: "task", status: "in_progress" });
+  assert.equal(changed.tasks[0].status, "in_progress");
+  assert.equal(cachedTask.status, "new");
+  assert.equal(myTasksReducer(changed, { type: "success", requestId: 1, tasks: [cachedTask] }), changed);
+  const synchronizing = myTasksReducer(changed, { type: "request", requestId: 3 });
+  const synchronized = myTasksReducer(synchronizing, { type: "success", requestId: 3, tasks: [{ ...cachedTask, status: "in_progress", title: "С сервера" }] });
+  assert.equal(synchronized.tasks[0].title, "С сервера");
+  const uncached = myTasksReducer(initialMyTasksState, { type: "status", requestId: 1, taskId: "task", status: "in_progress" });
+  assert.equal(uncached.tasks, null);
 });

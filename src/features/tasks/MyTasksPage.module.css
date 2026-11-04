@@ -20,3 +20,6 @@
   .taskTitle { grid-column: 1; grid-row: 1; }
   .taskStatus { grid-column: 1; grid-row: 2; }
 }
+
+.refreshError { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-md); margin-bottom: var(--space-lg); color: var(--color-danger); }
+.refreshError p { margin: 0; line-height: var(--line-height-body); }
