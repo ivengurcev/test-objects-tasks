@@ -122,14 +122,14 @@ yarn db:stop
 
 Образ собирается в два этапа: Node.js 24 и Yarn 4 устанавливают зависимости, запускают typecheck и production-сборку; Nginx Alpine раздаёт `dist/` на внутреннем порту `8080` с SPA fallback. Build arguments `SUPABASE_URL` и `SUPABASE_PUBLISHABLE_KEY` обязательны. Env-файлы исключены из Docker build context.
 
-Собери образ из настроек в `.env.local`:
+Собери образ с публичным ключом из `.env.local`. Для тестового VPS передай URL прокси через существующий build argument (SDK требует полный URL):
 
 ```sh
 set -a
 . ./.env.local
 set +a
 docker build \
-  --build-arg SUPABASE_URL \
+  --build-arg SUPABASE_URL=http://2.27.120.66:3003/supabase \
   --build-arg SUPABASE_PUBLISHABLE_KEY \
   --tag test-objects-tasks:latest \
   .
@@ -153,7 +153,7 @@ docker run -d \
   test-objects-tasks:latest
 ```
 
-Docker направляет внешний порт `3003` прямо на Nginx внутри контейнера, работающий на порту `8080`. Дополнительный Nginx-прокси и HTTPS-терминация не используются.
+Docker направляет внешний порт `3003` прямо на Nginx внутри контейнера, работающий на порту `8080`. Браузер обращается к `/supabase/` на этом же VPS; Nginx удаляет префикс и передаёт запросы только на `https://sgyyxwtanfsjxcidfzyh.supabase.co/`, сохраняя пользовательские `Authorization` и `apikey`. Соединение с Supabase использует HTTPS с SNI и проверкой сертификата. Раздача SPA не меняется. Это временное решение для тестового задания: приложение остаётся доступным по HTTP. При смене публичного адреса пересобери образ с соответствующим `SUPABASE_URL`; относительный `/supabase` не подходит. Отдельный backend и секретные ключи не используются.
 
 Проверка главной страницы, статических файлов и SPA fallback:
 
